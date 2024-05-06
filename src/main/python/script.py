@@ -10,7 +10,7 @@ import shutil
 url = "https://zenodo.org/record/6344334/files/Images_LR.zip"
 
 # Ruta donde guardar el archivo zip descargado
-carpeta_imagenes = os.path.join("src", "data", "images")
+carpeta_imagenes = os.path.join("data", "images")
 
 carpeta_lr = os.path.join(carpeta_imagenes, "LR")
 ruta_archivo_zip = os.path.join(carpeta_imagenes, "Images_LR.zip")
@@ -40,7 +40,6 @@ os.remove(ruta_archivo_zip)
 os.rename(os.path.join(carpeta_lr, "Images_LR"), ruta_archivo_extraido)
 
 print("LR completado")
-
 
 
 urls = [
