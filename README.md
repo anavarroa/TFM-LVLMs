@@ -2,11 +2,14 @@
 
 
 
-## Getting started
+## Descarga de datos
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+El dataset que se usará para entrenar el modelo se llama NWPU-RSICD-UAV-UCM-LR-DOTA-instructions, y consta de datos de otros cuatro datasets de RS. Deberán obtenerse las imágenes de dichos datasets para poder empezar a trabajar.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- Las imágenes de dos de los datasets (DOTA y LR) pueden descargarse automáticamente ejecutando el script: script.py
+- Las imágenes del dataset NWPU deben descargarse manualmente desde el [OneDrive](https://onedrive.live.com/?authkey=%21AHHNaHIlzp%5FIXjs&id=5C5E061130630A68%21107&cid=5C5E061130630A68&parId=root&parQt=sharedby&o=OneUp)
+- Las imágenes del dataset RSICD deben descargarse manualmente desde el [Mega](https://mega.nz/folder/EOpjTAwL#LWdHVjKAJbd3NbLsCvzDGA)
+
 
 ## Add your files
 
