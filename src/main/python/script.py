@@ -3,14 +3,12 @@ import os
 import requests
 import zipfile
 import gdown
-import shutil
-
 
 # URL del archivo zip a descargar
 url = "https://zenodo.org/record/6344334/files/Images_LR.zip"
 
 # Ruta donde guardar el archivo zip descargado
-carpeta_imagenes = os.path.join("data", "images")
+carpeta_imagenes = os.path.join("data", "imagenes")
 
 carpeta_lr = os.path.join(carpeta_imagenes, "LR")
 ruta_archivo_zip = os.path.join(carpeta_imagenes, "Images_LR.zip")
