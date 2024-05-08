@@ -103,11 +103,12 @@ def descarga_JSON(directorio):
 
 if __name__=='__main__':
 
-    carpeta_imagenes = os.path.join("/datassd/home/anavarroa/tfm-modelos-multimodales/data/imagenes")
-    carpeta_json = os.path.join("/datassd/home/anavarroa/tfm-modelos-multimodales/data")
+    carpeta_imagenes = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes")
+    carpeta_json = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data")
 
     descarga_LR(carpeta_imagenes)
     descarga_DOTA(carpeta_imagenes)
     descarga_JSON(carpeta_json)
-    
+
+
     print('DONE')
