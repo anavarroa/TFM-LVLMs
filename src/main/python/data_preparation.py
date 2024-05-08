@@ -4,6 +4,15 @@ import zipfile
 import gdown
 import json
 
+def count_files(directory):
+    count = 0
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith(('.jpg','.png','.tif')):
+                count += 1
+    return count
+
+
 def descarga_LR(directorio):
     # URL del archivo zip a descargar
     url = "https://zenodo.org/record/6344334/files/Images_LR.zip"
@@ -35,7 +44,8 @@ def descarga_LR(directorio):
     # Renombrar la carpeta extraida a "Train"
     os.rename(os.path.join(carpeta_lr, "Images_LR"), ruta_archivo_extraido)
 
-    print("LR descargado")
+    file_count = count_files(carpeta_lr)
+    print("Dataset LR descargado:",file_count,"imágenes extraídas")
 
 
 
@@ -72,7 +82,8 @@ def descarga_DOTA(directorio):
         # Eliminar el archivo zip
         os.remove(zip_file_name)
 
-    print("DOTA descargado")
+    file_count = count_files(carpeta_dota)
+    print("Dataset DOTA descargado:",file_count,"imágenes extraídas")
 
 
 def descarga_JSON(directorio):
@@ -98,7 +109,9 @@ def descarga_JSON(directorio):
     with open(output_path, "w") as f:
         json.dump(filtered_data, f, indent=4)
 
-    print("JSON descargado")
+    print("archivo JSON descargado")
+
+
 
 
 if __name__=='__main__':
@@ -110,5 +123,4 @@ if __name__=='__main__':
     descarga_DOTA(carpeta_imagenes)
     descarga_JSON(carpeta_json)
 
-
-    print('DONE')
+    print('Proceso terminado!')
