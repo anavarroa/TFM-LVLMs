@@ -144,7 +144,21 @@ Son estos los parámetros que iremos modificando para evaluar resultados.
 - *lora_alpha*: ayuda a preservar la estabilidad numérica. El valor habitual ronda 16.
 - *mm_projector_lr*: ratio de aprendizaje separado para el proyector multimodal.
 - *deepspeed*: especifica la configuración deepspeed zero stage 3 para el entrenamiento.
-- *mm_projector_type*: fijado a un MLP con función de activación GeLu.
+- *mm_projector_type*: tipo de proyector multimodal, fijado a un MLP con función de activación GeLu.
+- *mm_vision_select_layer*: especifica la capa del modelo de visión que usará para la fusión multimodal.
+- *mm_use_im_start_end*: indica si se utilizan tokens especiales para marcar el inicio y final de una imagen.
+- *mm_use_im_patch_tokens*: indica si se usan tokens de parche de imagen.
+- *group_by_modality_length*: controla cómo se agrupan los lotes de entreamiento basados en la longitud de las secuencias de diferentes modalidades.
+- *num_train_epochs*: número de épocas de entrenamiento.
+- *gradient_accumulation_steps*: acumulación de gradiente antes de actualizar los pesos.
+- *evaluation_strategy*: indica si se realizará evaluación durante el entrenamiento.
+- *learning_rate*: tasa de aprendizaje.
+- *weight_decay*: regularización.
+- *warmup_ratio*: programación de calentamiento.
+- *logging_steps*: frecuencia con que se registran métricas durante el entrenamiento.
+- *model_max_length*: longitud máxima para las secuencias de entrada.
+- *gradient_checkpoint*: habilita el checkpoint para ahorrar memoria durante el entrenamiento.
+- *dataloader_num_workers*: número de procesos de carga de datos.
 - *report_to wandb*: opción de monitoreo que proporciona un seguimiento del progreso y métricas de rendimiento a tiempo real.
 
 El script utiliza **DeepSpeed**, una librería de optimización de PyTorch para Deep Learning diseñada para reducir el poder computacional y memoria a la hora de entrenar modelos en paralelo.
