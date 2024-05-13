@@ -1,18 +1,4 @@
-# Cargar el modelo pre-entrenado de LLaVA
-from llava.model.builder import load_pretrained_model
-from llava.mm_utils import get_model_name_from_path
-from llava.eval.run_llava import eval_model
 import os
-
-model_path = "liuhaotian/llava-v1.5-7b"
-
-tokenizer, model, image_processor, context_len = load_pretrained_model(
-    model_path=model_path,
-    model_base=None,
-    model_name=get_model_name_from_path(model_path),
-    offload_folder="/content/llava_model"
-)
-
 
 DEEPSPEED_SCRIPT = "deepspeed llava/train/train_mem.py"
 DEEPSPEED_JSON = "./scripts/zero3.json"
@@ -22,6 +8,13 @@ IMAGE_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..",".."
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","res")
 
+# lora_r
+# mm_projector_lr
+# num train epochs
+# gradient_accumulation_steps
+# learning_rate
+# warmup_ratio
+# model_max_length
 
 finetune_script = f'''
 {DEEPSPEED_SCRIPT} \
@@ -63,3 +56,9 @@ finetune_script = f'''
 
 import torch
 torch.cuda.empty_cache()
+
+import subprocess
+
+result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
+
+print(result.stdout)
