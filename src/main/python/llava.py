@@ -1,12 +1,12 @@
 import os
 
-DEEPSPEED_SCRIPT = "deepspeed llava/train/train_mem.py"
-DEEPSPEED_JSON = "./scripts/zero3.json"
-MODEL_NAME = "liuhaotian/llava-v.15-7b"
-DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","data","dataset.json")
-IMAGE_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","data","imagenes")
+DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
+DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
+MODEL_NAME = "liuhaotian/llava-v1.5-7b"
+DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","dataset.json"))
+IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes"))
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","res")
+OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res"))
 
 # lora_r
 # mm_projector_lr
@@ -58,7 +58,7 @@ import torch
 torch.cuda.empty_cache()
 
 import subprocess
-
+print(finetune_script)
 result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
 
 print(result.stdout)
