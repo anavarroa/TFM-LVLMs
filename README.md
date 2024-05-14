@@ -80,7 +80,7 @@ OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fil
 
 ### Parámetros
 
-Además de las rutas, es crucial configurar los parámetros del modelo.
+Además de las rutas, es crucial configurar los parámetros del modelo. El siguiente stream ejecutará el entrenamiento con __LORA__, una técnica de fine-tuning más eficiente basada en la utilización de matrices de menor rango. Los parámetros ajustables son los que aparecen en él.
 
 ```
 finetune_script = f'''
@@ -121,9 +121,9 @@ finetune_script = f'''
     --report_to wandb
 '''
 ```
-Son estos los parámetros que iremos modificando para evaluar resultados.
+Breve explicación de alguno de los parámetros:
 
-- *lora_enable*: activa el uso de __LoRA__, una técnica de fine-tuning más eficiente basada en la utilización de matrices de menor rango.
+- *lora_enable*: activa el uso de __LoRA__.
 - *lora_r*: rango de la descomposición de matrices en __LoRA__. El rango común en fine-tuning de LLMs es de 8 a 64, pero un mayor rango mejora la capacidad del modelo.
 - *lora_alpha*: ayuda a preservar la estabilidad numérica. El valor habitual ronda 16.
 - *mm_projector_lr*: ratio de aprendizaje separado para el proyector multimodal.
@@ -147,6 +147,11 @@ Son estos los parámetros que iremos modificando para evaluar resultados.
 
 El script utiliza **DeepSpeed**, una librería de optimización de PyTorch para Deep Learning diseñada para reducir el poder computacional y memoria a la hora de entrenar modelos en paralelo.
 
+En caso de lanzarlo sin LORA, deberá eliminarse toda la primera línea del stream:
+```
+--lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5 \
+```
+
 ### Ejecución
 Antes de nada, es recomendable borrar el cache de CUDA para asegurar un uso de memoria eficiente:
 
@@ -163,4 +168,33 @@ import subprocess
 
 result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
 print(result.stdout)
+```
+
+#### Errores
+Si da problemas, puede ser por varios motivos:
+- Rutas mal especificadas.
+- Librerías no instaladas como flash-attn ```pip install flash-attn --no-build-isolation```.
+- No suficiente memoria en GPU.
+- Error de subprocess: en este caso se puede probar a hacer un print del stream ```print(finetune_script)``` y ejecutarlo **desde terminal**:
+```
+deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path /datassd/home/anavarroa/tfm-modelos-multimodales/data/dataset.json     --image_folder /datassd/home/anavarroa/tfm-modelos-multimodales/data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir /datassd/home/anavarroa/tfm-modelos-multimodales/res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb
+```
+De esta forma al menos se puede identificar el error más fácilmente, pues el mensaje dado por _subprocess_ no es muy concreto.
+
+#### Éxito
+
+Si todo va bien, aparecerá el siguiente mensaje de _wandb_:
+```
+wandb: (1) Create a W&B account
+wandb: (2) Use an existing W&B account
+wandb: (3) Don't visualize my results
+wandb: Enter your choice: 
+```
+Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [Weights & Biases](https://wandb.ai/site). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. 
+
+Al terminar el proceso se habrá creado una carpeta _wandb_ paralela a _data_, _model_ y _src_ con todos los datos del proceso, así como una serie de resultados en varios formatos dentro de la carpeta indicada por OUTPUT_DIR. Segundos después, una barra irá completándose hasta suplir el *num_train_epochs* indicadas, convergiendo al *learning_rate* e indicando la pérdida (*loss*). El proceso terminará con un historial y resumen de ejecución.
+
+El entrenamiento puede llegar a consumir una gran cantidad de memoria: se han llegado a alcanzar picos de hasta 52000MiB en 4 GPUs simultáneamente. En otra terminal puede estudiarse el uso de memoria a tiempo de ejecución real mediante (actualizado cada medio segundo).
+```
+watch -n 0.5 nvidia-smi
 ```
