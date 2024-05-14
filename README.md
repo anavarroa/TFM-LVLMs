@@ -28,7 +28,7 @@ data
 └── dataset.json
 ```
 
-Se recomienda ejecutar el script [data_preparation](src/main/python/script.py) en primer lugar, pues creará las carpetas de manera correcta, descomprimirá las imágenes de **LR** y **DOTA** en el formato adecuado y creará el archivo _JSON_ editado. Tardará unos cuantos minutos.
+Se recomienda ejecutar el script [data_preparation](src/main/python/data_preparation.py) en primer lugar, pues creará las carpetas de manera correcta, descomprimirá las imágenes de **LR** y **DOTA** en el formato adecuado y creará el archivo _JSON_ editado. Tardará unos cuantos minutos.
 
  El resto de datasets, **NWPU** y **RSICD**, deberán ser copiados con más cuidado; será necesario eliminar o renombrar las carpetas descomprimidas que no coincidan con la estructura mostrada.
 
@@ -51,32 +51,16 @@ En esta carpeta ya podremos empezar a entrenar el modelo con nuestro conjunto de
 
 ## Carga del modelo preentrenado
 
-Vamos a cargar el modelo de LLaVA 1.5. preentrenado para empezar con el fine-tuning. El modelo puede encontrarse en [HuggingFace](https://huggingface.co/liuhaotian/llava-v1.5-7b), y viene con el tokenizer, el procesador de imágenes y el context length:
-
-```
-from llava.model.builder import load_pretrained_model
-from llava.mm_utils import get_model_name_from_path
-from llava.eval.run_llava import eval_model
-import os
-
-model_path = "liuhaotian/llava-v1.5-7b"
-
-tokenizer, model, image_processor, context_len = load_pretrained_model(
-    model_path=model_path,
-    model_base=None,
-    model_name=get_model_name_from_path(model_path),
-    offload_folder="/content/llava_model"
-)
-```
+Vamos a cargar el modelo de LLaVA 1.5. preentrenado para empezar con el fine-tuning. El modelo puede encontrarse en [HuggingFace](https://huggingface.co/liuhaotian/llava-v1.5-7b), y viene con el tokenizer, el procesador de imágenes y el context length.
 
 ### Rutas
 
 Para empezar el proceso de fine-tuning, tenemos en primer lugar que indicar las rutas pertinentes que el modelo necesitará conocer:
 
 ```
-DEEPSPEED_SCRIPT = "deepspeed llava/train/train_mem.py"
-DEEPSPEED_JSON = "./scripts/zero3.json"
-MODEL_NAME = "liuhaotian/llava-v.15-7b"
+DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
+DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
+MODEL_NAME = "liuhaotian/llava-v1.5-7b"
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
 ```
 
@@ -86,12 +70,12 @@ Deberemos también indicar la ruta a nuestro conjunto de datos personalizado, as
 - **IMAGE_FOLDER**: ruta a la carpeta _data/imagenes_.
 - **OUTPUT_DIR**: ruta a la carpeta donde queremos guardar los resultados.
 
-En caso de ejecutar el código desde una carpeta dentro de _model/LLaVA_, y alojar los resultados en una carpeta _res_ paralela a _data_, _model_ y _src_, puede usarse el siguiente código:
+En caso de ejecutar el código desde el mismo directorio donde se aloja el script *data_preparation*, y alojar los resultados en una carpeta _res_ paralela a _data_, _model_ y _src_, puede usarse el siguiente código:
 
 ```
-DATA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","data","dataset.json") # Cambiar según el caso
-IMAGE_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","data","imagenes") # Cambiar según el caso
-OUTPUT_DIR = OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","res") # Cambiar según el caso
+DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","dataset.json")) # Cambiar según el caso
+IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes")) # Cambiar según el caso
+OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res")) # Cambiar según el caso
 ```
 
 ### Parámetros
@@ -162,3 +146,21 @@ Son estos los parámetros que iremos modificando para evaluar resultados.
 - *report_to wandb*: opción de monitoreo que proporciona un seguimiento del progreso y métricas de rendimiento a tiempo real.
 
 El script utiliza **DeepSpeed**, una librería de optimización de PyTorch para Deep Learning diseñada para reducir el poder computacional y memoria a la hora de entrenar modelos en paralelo.
+
+### Ejecución
+Antes de nada, es recomendable borrar el cache de CUDA para asegurar un uso de memoria eficiente:
+
+```
+import torch
+
+torch.cuda.empty_cache()
+```
+
+A continuación, para ejecutar el stream podemos usar la librería _subprocess_:
+
+```
+import subprocess
+
+result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
+print(result.stdout)
+```
