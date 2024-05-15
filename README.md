@@ -2,9 +2,11 @@
 
 
 
-## Descarga de datos
+## Conjunto de datos
 
 El dataset de entrenamiento original se llama [**NWPU-RSICD-UAV-UCM-LR-DOTA-instructions**](https://huggingface.co/datasets/BigData-KSU/RS-instructions-dataset/blob/main/NWPU-RSICD-UAV-UCM-LR-DOTA-intrcutions.json), y consta de datos de varios datasets de _Remote Sensing_ (RS). El dataset deberá ser editado para que contenga datos de únicamente cuatro conjuntos principales: **NWPU**, **RSICD**, **LR** y **DOTA**. De ello se encargará el script [data_preparation](src/main/python/data_preparation.py) del que se habla abajo.
+
+### Descarga del dataset
 
 Deberán obtenerse las imágenes de dichos datasets (unas 45000) para poder empezar a trabajar .
 
@@ -32,7 +34,28 @@ Se recomienda ejecutar el script [data_preparation](src/main/python/data_prepara
 
  El resto de datasets, **NWPU** y **RSICD**, deberán ser copiados con más cuidado; será necesario eliminar o renombrar las carpetas descomprimidas que no coincidan con la estructura mostrada.
 
- 
+
+### Partición
+
+Será necesario hacer una partición del conjunto de datos elegido. Esta partición debe ser fija durante todo el proceso:
+- **Conjunto de entrenamiento** (TRAIN): datos que se usarán para entrenar al modelo, y que comprenderá la mayor parte del dataset.
+- **Conjunto de validación** (VAL): datos que se usarán, durante el entrenamiento, para validar el conjunto de entrenamiento considerado.
+- **Conjunto de prueba** (TEST): datos que se usarán para comprobar la calidad del modelo ya entrenado, durante la evaluación de resultados.
+
+El porcentaje de datos utilizados en cada conjunto se ha fijado a 70% _TRAIN_, 10% _VAL_ y 20% _TEST_.
+
+El siguiente script [data_partition]() llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los tres conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
+
+```
+data
+├── imagenes
+├── dataset.json
+└── sets
+    ├── data_train.json
+    ├── data_val.json
+    └── data_test.json
+```
+
 ## Descarga del modelo
 
 El siguiente paso será descargar el modelo de [**LLaVA 1.5.**](https://github.com/haotian-liu/LLaVA.git). Para ello, en una nueva carpeta _model_ paralela a _src_ y _data_, deberemos clonar el repositorio de GitHub de **LLaVA 1.5.**:
@@ -66,7 +89,7 @@ VISION_TOWER = "openai/clip-vit-large-patch14-336"
 
 Deberemos también indicar la ruta a nuestro conjunto de datos personalizado, así como la carpeta donde deseamos que se alojen los resultados. Estas deberán ser especificadas manualmente:
 
-- **DATA_PATH**: ruta al archivo _data/dataset.json_.
+- **DATA_PATH**: ruta al conjunto de entrenamiento *data/sets/data_train.json*.
 - **IMAGE_FOLDER**: ruta a la carpeta _data/imagenes_.
 - **OUTPUT_DIR**: ruta a la carpeta donde queremos guardar los resultados.
 
@@ -134,6 +157,7 @@ Breve explicación de alguno de los parámetros:
 - *mm_use_im_patch_tokens*: indica si se usan tokens de parche de imagen.
 - *group_by_modality_length*: controla cómo se agrupan los lotes de entreamiento basados en la longitud de las secuencias de diferentes modalidades.
 - *num_train_epochs*: número de épocas de entrenamiento.
+- *per_device_train_batch_size*: cantidad de ejemplos de entrenamiento que se utilizan en una sola iteración del algoritmo.
 - *gradient_accumulation_steps*: acumulación de gradiente antes de actualizar los pesos.
 - *evaluation_strategy*: indica si se realizará evaluación durante el entrenamiento.
 - *learning_rate*: tasa de aprendizaje.
@@ -145,15 +169,24 @@ Breve explicación de alguno de los parámetros:
 - *dataloader_num_workers*: número de procesos de carga de datos.
 - *report_to wandb*: opción de monitoreo que proporciona un seguimiento del progreso y métricas de rendimiento a tiempo real.
 
-El script utiliza **DeepSpeed**, una librería de optimización de PyTorch para Deep Learning diseñada para reducir el poder computacional y memoria a la hora de entrenar modelos en paralelo.
+De todos ellos, es importante identificar cuáles van a ser los más importantes, y los que habrá que modificar para evaluar los resultados obtenidos. Dichos parámetros son, principalmente
+> num train epochs
+> per_device_train_batch_size
+> gradient_accumulation_steps
+> learning_rate
+> warmup_ratio
 
 En caso de lanzarlo sin LORA, deberá eliminarse toda la primera línea del stream:
 ```
 --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5 \
 ```
+Esto, no obstante, puede llegar a dar problemas por falta de memoria en GPU.
 
-### Ejecución
-Antes de nada, es recomendable borrar el cache de CUDA para asegurar un uso de memoria eficiente:
+El stream anterior utiliza **DeepSpeed**, una librería de optimización de PyTorch para Deep Learning diseñada para reducir el poder computacional y memoria a la hora de entrenar modelos en paralelo.
+
+
+## Entrenamiento
+Antes de nada, es recomendable borrar el cache de **CUDA** para asegurar un uso de memoria eficiente:
 
 ```
 import torch
@@ -170,31 +203,48 @@ result = subprocess.run([finetune_script], shell=True, capture_output=True, text
 print(result.stdout)
 ```
 
-#### Errores
+### Errores
 Si da problemas, puede ser por varios motivos:
 - Rutas mal especificadas o enlaces incorrectos.
 - Librerías no instaladas como flash-attn ```pip install flash-attn --no-build-isolation```, indispensable para el funcionamiento del script _train.py_.
-- No suficiente memoria en GPU: con cuatro Nvidia H100 de 80GB puede llegar a ocupar +50000Mib de memoria en cada una.
+- No suficiente memoria en GPU: con cuatro **Nvidia H100 de 80GB** puede llegar a ocupar +50000Mib de memoria en cada una. Para lidiar con este problema puede disminuirse el *batch_size* (el mínimo es 2).
 - Error de subprocess: en este caso se puede probar a hacer un print del stream ```print(finetune_script)``` y ejecutarlo **desde terminal**:
 ```
 deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path /datassd/home/anavarroa/tfm-modelos-multimodales/data/dataset.json     --image_folder /datassd/home/anavarroa/tfm-modelos-multimodales/data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir /datassd/home/anavarroa/tfm-modelos-multimodales/res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb
 ```
 De esta forma al menos se puede identificar el error más fácilmente, pues el mensaje dado por _subprocess_ no es muy concreto.
 
-#### Éxito
+### Éxito
 
-Si todo va bien, aparecerá el siguiente mensaje de _wandb_:
+Si todo va bien, antes de comenzar el entrenamiento aparecerá el siguiente mensaje de _wandb_:
 ```
 wandb: (1) Create a W&B account
 wandb: (2) Use an existing W&B account
 wandb: (3) Don't visualize my results
 wandb: Enter your choice: 
 ```
-Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [Weights & Biases](https://wandb.ai/site). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU. En otra terminal puede estudiarse el uso de memoria del entrenamiento a tiempo de ejecución real (actualizado cada medio segundo) mediante:
+Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [**Weights & Biases**](https://wandb.ai/site). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. **Wandb** es una buena herramienta para realizar un estudio en detalle, pero si no se piensa usar puede eliminarse la última orden del stream, ```report_to wandb```. En ocasiones puede dar problemas si el programa es lanzado desde el script o con _nohup_, debido al cuadro de diálogo que genera.
+
+Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU (reducir *batch_size* en tal caso). En otra terminal puede estudiarse el uso de memoria del entrenamiento a tiempo de ejecución real (actualizado cada medio segundo) mediante:
 ```
 watch -n 0.5 nvidia-smi
 ```
 
-Llegado el momento una barra irá completándose hasta suplir el *num_train_epochs* indicadas, convergiendo al *learning_rate* e indicando la pérdida (*loss*). Esto puede tomar un tiempo largo, dependiendo del número de épocas. El proceso terminará con un historial y resumen de ejecución.
+Llegado el momento una barra de carga irá completándose hasta suplir el *num_train_epochs* indicadas, convergiendo al *learning_rate* e indicando la pérdida (*loss*). Esto puede tomar un tiempo largo, dependiendo del número de épocas. El proceso terminará con un historial y resumen de ejecución. Al terminar el proceso se habrá creado una carpeta _wandb_ paralela a _data_, _model_ y _src_ con todos los datos del proceso, así como una serie de resultados en varios formatos dentro de la carpeta indicada por **OUTPUT_DIR**.
 
-Al terminar el proceso se habrá creado una carpeta _wandb_ paralela a _data_, _model_ y _src_ con todos los datos del proceso, así como una serie de resultados en varios formatos dentro de la carpeta indicada por OUTPUT_DIR.
+```
+root
+├── data
+├── model
+├── src
+├── res
+│   ├── data_train.json
+│   ├── data_val.json
+│   └── data_test.json
+└── wandb
+    └── ...
+```
+
+## Evaluación
+
+Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento y validación, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
