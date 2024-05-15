@@ -44,7 +44,7 @@ Será necesario hacer una partición del conjunto de datos elegido. Esta partici
 
 El porcentaje de datos utilizados en cada conjunto se ha fijado a 70% _TRAIN_, 10% _VAL_ y 20% _TEST_.
 
-El siguiente script [data_partition]() llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los tres conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
+El siguiente script [data_partition](src/main/python/data_partition.py) llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los tres conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
 
 ```
 data
@@ -238,9 +238,12 @@ root
 ├── model
 ├── src
 ├── res
-│   ├── data_train.json
-│   ├── data_val.json
-│   └── data_test.json
+│   ├── adapter_config.json
+│   ├── adapter_model.safetensors
+│   ├── config.json
+│   ├── non_lora_trainables.bin
+│   ├── README.md
+│   └── trainer_state.json
 └── wandb
     └── ...
 ```
@@ -248,3 +251,5 @@ root
 ## Evaluación
 
 Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento y validación, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
+
+Para la evaluación de los resultados usaremos una métrica de error llamada [**CIDERr**](https://arxiv.org/pdf/1411.5726) especializada en tareas de **VQA** para modelos multimodales de imagen y texto.
