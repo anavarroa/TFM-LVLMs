@@ -1,5 +1,6 @@
 import os
 
+# RUTAS
 DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
 DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
 MODEL_NAME = "liuhaotian/llava-v1.5-7b"
@@ -8,13 +9,16 @@ IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__f
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
 OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res"))
 
-# lora_r
-# mm_projector_lr
-# num train epochs
-# gradient_accumulation_steps
-# learning_rate
-# warmup_ratio
-# model_max_length
+# PARÁMETROS:
+
+# > lora_r
+# > mm_projector_lr
+# > num train epochs
+# > per_device_train_batch_size
+# > gradient_accumulation_steps
+# > learning_rate
+# > warmup_ratio
+# > model_max_length
 
 finetune_script = f'''
 {DEEPSPEED_SCRIPT} \
@@ -53,10 +57,15 @@ finetune_script = f'''
     --lazy_preprocess True \
     --report_to wandb
 '''
+# report_to wandb para seguimiento en Weights & Biases
+# sin LORA puede que falte memoria en GPU
 
+
+# Borrar cache de CUDA
 import torch
 torch.cuda.empty_cache()
 
+# Ejecución del stream
 import subprocess
 print(finetune_script)
 result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
