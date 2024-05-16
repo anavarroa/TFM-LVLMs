@@ -37,8 +37,8 @@ finetune_script = f'''
     --group_by_modality_length True \
     --bf16 True \
     --output_dir {OUTPUT_DIR} \
-    --num_train_epochs 1 \
-    --per_device_train_batch_size 16 \
+    --num_train_epochs 0.05 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \
@@ -68,6 +68,6 @@ torch.cuda.empty_cache()
 # Ejecución del stream
 import subprocess
 print(finetune_script)
-result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
 
-print(result.stdout)
+#result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
+#print(result.stdout)
