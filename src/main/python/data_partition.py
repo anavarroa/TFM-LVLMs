@@ -3,6 +3,8 @@ import json
 import random
 from collections import defaultdict
 
+random.seed(28)
+
 def dividir_dataset(data, train_ratio, test_ratio):
     indices = list(range(len(data)))
     random.shuffle(indices)
