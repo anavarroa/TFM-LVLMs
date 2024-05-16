@@ -1,7 +1,5 @@
 # TFM Modelos Multimodales
 
-
-
 ## Conjunto de datos
 
 El dataset de entrenamiento original se llama [**NWPU-RSICD-UAV-UCM-LR-DOTA-instructions**](https://huggingface.co/datasets/BigData-KSU/RS-instructions-dataset/blob/main/NWPU-RSICD-UAV-UCM-LR-DOTA-intrcutions.json), y consta de datos de varios datasets de _Remote Sensing_ (RS). El dataset deberá ser editado para que contenga datos de únicamente cuatro conjuntos principales: **NWPU**, **RSICD**, **LR** y **DOTA**. De ello se encargará el script [data_preparation](src/main/python/data_preparation.py) del que se habla abajo.
@@ -37,24 +35,29 @@ Se recomienda ejecutar el script [data_preparation](src/main/python/data_prepara
 
 ### Partición
 
-Será necesario hacer una partición del conjunto de datos elegido. Esta partición debe ser fija durante todo el proceso:
-- **Conjunto de entrenamiento** (TRAIN): datos que se usarán para entrenar al modelo, y que comprenderá la mayor parte del dataset.
-- **Conjunto de validación** (VAL): datos que se usarán, durante el entrenamiento, para validar el conjunto de entrenamiento considerado.
-- **Conjunto de prueba** (TEST): datos que se usarán para comprobar la calidad del modelo ya entrenado, durante la evaluación de resultados.
+Será necesario hacer una partición del conjunto de datos elegido. Esta partición debe ser la misma durante todo el proceso de entrenamiento y posterior evaluación:
+- **Conjunto de entrenamiento** (*data_train*): datos que se usarán para entrenar al modelo, y que comprenderá la mayor parte del dataset.
+- **Conjunto de validación** (*data_val*): datos que se usarán, durante el entrenamiento, para evaluar el rendimiento y ajustar los hiperparámetros.
+- **Conjunto de prueba** (*data_test*): datos que se usarán para comprobar la calidad del modelo ya entrenado, durante la evaluación de resultados.
 
-El porcentaje de datos utilizados en cada conjunto se ha fijado a 70% _TRAIN_, 10% _VAL_ y 20% _TEST_.
-
-El siguiente script [data_partition](src/main/python/data_partition.py) llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los tres conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
+El script [data_partition](src/main/python/data_partition.py) llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los tres conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
 
 ```
 data
 ├── imagenes
-├── dataset.json
-└── sets
-    ├── data_train.json
-    ├── data_val.json
-    └── data_test.json
+├── sets
+│   ├── data_train.json
+│   ├── data_val.json
+│   └── data_test.json
+└── dataset.json
 ```
+
+El porcentaje de datos en cada conjunto ha sido fijado a 70% _TRAIN_, 10% _VAL_ y 20% _TEST_. Si se desea pueden modificarse estos porcentajes desde el script, en la función *crear_datasets(directorio, train_ratio, test_ratio)*:
+- Si *train_ratio+test_ratio=1* se crearán el conjunto de entrenamiento y el de prueba
+- Si *train_ratio+test_ratio<1* se crearán, además de dichos conjuntos, el conjunto de validación con el porcentaje restante de datos.
+
+De esta forma la partición se llevará a cabo de forma automática según nuestros intereses.
+
 
 ## Descarga del modelo
 
@@ -252,4 +255,8 @@ root
 
 Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento y validación, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
 
-Para la evaluación de los resultados usaremos una métrica de error llamada [**CIDERr**](https://arxiv.org/pdf/1411.5726) especializada en tareas de **VQA** para modelos multimodales de imagen y texto.
+Para la evaluación de los resultados usaremos varias métricas de error para analizar tanto las tareas multimodales de **captioning** y **VQA**, como monomodales de **NLP**:
+- **BLEU** (Bilingual Evaluation Understudy).
+- **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation).
+- **METEOR** (Metric for Evaluation of Translation with Explicit Ordering).
+- [**CIDERr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation).
