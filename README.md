@@ -52,11 +52,11 @@ data
 └── dataset.json
 ```
 
-El porcentaje de datos en cada conjunto ha sido fijado a 70% _TRAIN_, 10% _VAL_ y 20% _TEST_. Si se desea pueden modificarse estos porcentajes desde el script, en la función *crear_datasets(directorio, train_ratio, test_ratio)*:
+El porcentaje de datos en cada conjunto es por defecto 70% _TRAIN_, 10% _VAL_ y 20% _TEST_ (con semilla fijada). Si se desea pueden modificarse estos porcentajes desde el script, en la función *crear_datasets(directorio, train_ratio, test_ratio)*:
 - Si *train_ratio+test_ratio=1* se crearán el conjunto de entrenamiento y el de prueba
 - Si *train_ratio+test_ratio<1* se crearán, además de dichos conjuntos, el conjunto de validación con el porcentaje restante de datos.
 
-De esta forma la partición se llevará a cabo de forma automática según nuestros intereses.
+De esta forma la partición se llevará a cabo de forma automática según los intereses.
 
 
 ## Descarga del modelo
@@ -185,8 +185,7 @@ En caso de lanzarlo sin LORA, deberá eliminarse toda la primera línea del stre
 ```
 Esto, no obstante, puede llegar a dar problemas por falta de memoria en GPU.
 
-El stream anterior utiliza **DeepSpeed**, una librería de optimización de PyTorch para Deep Learning diseñada para reducir el poder computacional y memoria a la hora de entrenar modelos en paralelo.
-
+El stream anterior utiliza **DeepSpeed**, una librería de optimización de Deep Learning que proporciona una amplia gama de funciones para acelerar el entrenamiento de modelos grandes en GPU y sistemas distribuidos
 
 ## Entrenamiento
 Antes de nada, es recomendable borrar el cache de **CUDA** para asegurar un uso de memoria eficiente:
@@ -251,12 +250,22 @@ root
     └── ...
 ```
 
+- *adapter_config.json*: contiene la configuración específica del adaptador **LoRA**, e incluye detalles sobre cómo se integran los adaptadores en el modelo base.
+- *adapter_model.safetensors*:  almacena los pesos del adaptador **LoRA**.
+- *config.json*: contiene la configuración del modelo, incluyendo detalles como la arquitectura del modelo, el vocabulario y otros parámetros.
+- *non_lora_trainables.bin*: almacena los pesos entrenados de las partes del modelo que no están cubiertas por los adaptadores **LoRA**.
+- *trainer_state.json*: contiene el estado del entrenador, incluyendo el estado del optimizador, el scheduler de aprendizaje, y otras estadísticas del entrenamiento.
+
+La carpeta _wandb_ almacena los registros y artefactos de entrenamiento enviados a **W&B**. Incluye gráficos de métricas de entrenamiento y otros datos de seguimiento.
+
 ## Evaluación
 
 Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento y validación, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
 
-Para la evaluación de los resultados usaremos varias métricas de error para analizar tanto las tareas multimodales de **captioning** y **VQA**, como monomodales de **NLP**:
-- **BLEU** (Bilingual Evaluation Understudy).
-- **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation).
-- **METEOR** (Metric for Evaluation of Translation with Explicit Ordering).
-- [**CIDERr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation).
+Para la evaluación de los resultados usaremos varias métricas de error para analizar tanto las tareas multimodales de **captioning** y **VQA**, como las monomodales de **NLP**:
+- **BLEU** (Bilingual Evaluation Understudy): $$BLEU_k=\sqrt[n]{\prod_{i=1}^k P_i}.$$
+- **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation): $$ROUGE_k=2\dfrac{P_kR_k}{P_k+R_k}$$
+- **METEOR** (Metric for Evaluation of Translation with Explicit Ordering): $$METEOR=\dfrac{10P_1R_1}{R_1+9P_1}(1-0.5p^3).$$
+- [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation).
+
+En las fórmulas anteriores, $P_i$ representa la _precisión_ dada por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la predicción), y $R_i$ representa el _racall_ dado por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la referencia). En nuestro caso usaremos **BLEU_4**, **ROUGE_1** y **ROUGE_2**. En el caso de la métrica **METEOR**, $p$ es la penalización, calculada como el número de bloques en la predicción (grupos de unigramas que aparecen en el mismo orden que en la referencia) entre el número de unigramas en la predicción.
