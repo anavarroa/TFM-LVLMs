@@ -92,17 +92,27 @@ VISION_TOWER = "openai/clip-vit-large-patch14-336"
 
 Deberemos también indicar la ruta a nuestro conjunto de datos personalizado, así como la carpeta donde deseamos que se alojen los resultados. Estas deberán ser especificadas manualmente:
 
-- **DATA_PATH**: ruta al conjunto de entrenamiento *data/sets/data_train.json*.
+- **TRAIN_DATA_PATH**: ruta al conjunto de entrenamiento *data/sets/data_train.json*.
+- **VAL_DATA_PATH**: ruta al conjunto de validación *data/sets/data_val.json*.
 - **IMAGE_FOLDER**: ruta a la carpeta _data/imagenes_.
 - **OUTPUT_DIR**: ruta a la carpeta donde queremos guardar los resultados.
 
 En caso de ejecutar el código desde el mismo directorio donde se aloja el script *data_preparation*, y alojar los resultados en una carpeta _res_ paralela a _data_, _model_ y _src_, puede usarse el siguiente código:
 
 ```
-DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","dataset.json")) # Cambiar según el caso
+TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_train.json")) # Cambiar según el caso
+VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_val.json")) # Cambiar según el caso
 IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes")) # Cambiar según el caso
 OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res")) # Cambiar según el caso
 ```
+
+NOTA: para poder usar el conjunto de validación durante el entrenamiento será necesario hacer unas cuantas modificaciones al script de entrenamiento _train.py_, pues está diseñado para considerar únicamente el conjunto de entrenamiento. Dicho script se encuentra en _model/LLaVA/llava/train_, y su código comienza con tres clases muy importantes:
+
+- ModelArguments
+- DataArguments
+- TrainingArguments
+
+Los atributos de estas clases son los argumentos (parámetros) que indicaremos en el stream de _Deepspeed_ que construiremos en el siguiente paso.
 
 ### Parámetros
 
@@ -115,7 +125,8 @@ finetune_script = f'''
     --deepspeed {DEEPSPEED_JSON} \
     --model_name_or_path {MODEL_NAME} \
     --version v1 \
-    --data_path {DATA_PATH} \
+    --training_data_path {TRAIN_DATA_PATH} \
+    --validation_data_path {VAL_DATA_PATH} \
     --image_folder {IMAGE_FOLDER} \
     --vision_tower {VISION_TOWER} \
     --mm_projector_type mlp2x_gelu \
@@ -147,7 +158,15 @@ finetune_script = f'''
     --report_to wandb
 '''
 ```
-Breve explicación de alguno de los parámetros:
+Como ya se ha dicho, los parámetros *training_data_path* y *validation_data_path* no existen per se en el script _train.py_. Para solucionarlo y hacer posible la validación de los datos deberán realizarse las siguientes modificaciones en _train.py_:
+
+1. 
+2. 
+3. 
+4. 
+5. 
+
+Vamos ahora con una breve explicación del resto de parámetros que aparecen en el stream:
 
 - *lora_enable*: activa el uso de __LoRA__.
 - *lora_r*: rango de la descomposición de matrices en __LoRA__. El rango común en fine-tuning de LLMs es de 8 a 64, pero un mayor rango mejora la capacidad del modelo.
@@ -263,9 +282,15 @@ La carpeta _wandb_ almacena los registros y artefactos de entrenamiento enviados
 Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento y validación, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
 
 Para la evaluación de los resultados usaremos varias métricas de error para analizar tanto las tareas multimodales de **captioning** y **VQA**, como las monomodales de **NLP**:
-- **BLEU** (Bilingual Evaluation Understudy): $$BLEU_k=\sqrt[n]{\prod_{i=1}^k P_i}.$$
-- **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation): $$ROUGE_k=2\dfrac{P_kR_k}{P_k+R_k}$$
-- **METEOR** (Metric for Evaluation of Translation with Explicit Ordering): $$METEOR=\dfrac{10P_1R_1}{R_1+9P_1}(1-0.5p^3).$$
-- [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation).
+1. Métricas de **NLP**:
+    - **BLEU** (Bilingual Evaluation Understudy): $$BLEU_k=\sqrt[n]{\prod_{i=1}^k P_i}.$$
+    - **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation): $$ROUGE_k=2\dfrac{P_kR_k}{P_k+R_k}$$
+    - **METEOR** (Metric for Evaluation of Translation with Explicit Ordering): $$METEOR=\dfrac{10P_1R_1}{R_1+9P_1}(1-0.5p^3).$$
 
 En las fórmulas anteriores, $P_i$ representa la _precisión_ dada por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la predicción), y $R_i$ representa el _racall_ dado por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la referencia). En nuestro caso usaremos **BLEU_4**, **ROUGE_1** y **ROUGE_2**. En el caso de la métrica **METEOR**, $p$ es la penalización, calculada como el número de bloques en la predicción (grupos de unigramas que aparecen en el mismo orden que en la referencia) entre el número de unigramas en la predicción.
+
+2. Métrica de **imagen**:
+
+    - [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
+$$CIDEr_n(c_i,S_i)=\dfrac{1}{m}\sum_i\dfrac{g^n(c_i)\cdot g^n(s_{i,j})}{||g^n(c_i)||\cdot||g^n(s_{i,j})},$$
+$$g_k(s_{ij})=\dfrac{h_k(s_{ij})}{\sum_{w_j\in\Omega}h_l(s_{ij})}\log\left(\dfrac{|I|}{\sum_{I_p\in I}\min(1,\sum_qh_k(s_{pq}))}\right).$$
