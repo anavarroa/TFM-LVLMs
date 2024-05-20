@@ -5,6 +5,8 @@ DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
 DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
 MODEL_NAME = "liuhaotian/llava-v1.5-7b"
 DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","dataset.json"))
+TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_train.json"))
+VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_val.json"))
 IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes"))
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
 OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res"))
@@ -20,13 +22,14 @@ OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__fil
 # > warmup_ratio
 # > model_max_length
 
+
 finetune_script = f'''
 {DEEPSPEED_SCRIPT} \
     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5 \
     --deepspeed {DEEPSPEED_JSON} \
     --model_name_or_path {MODEL_NAME} \
     --version v1 \
-    --data_path {DATA_PATH} \
+    --data_path {TRAIN_DATA_PATH} \
     --image_folder {IMAGE_FOLDER} \
     --vision_tower {VISION_TOWER} \
     --mm_projector_type mlp2x_gelu \
@@ -37,7 +40,7 @@ finetune_script = f'''
     --group_by_modality_length True \
     --bf16 True \
     --output_dir {OUTPUT_DIR} \
-    --num_train_epochs 0.05 \
+    --num_train_epochs 0.01 \
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \
@@ -57,6 +60,8 @@ finetune_script = f'''
     --lazy_preprocess True \
     --report_to wandb
 '''
+
+
 # report_to wandb para seguimiento en Weights & Biases
 # sin LORA puede que falte memoria en GPU
 
