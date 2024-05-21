@@ -6,22 +6,18 @@ DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
 MODEL_NAME = "liuhaotian/llava-v1.5-7b"
 DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","dataset.json"))
 TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_train.json"))
-VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_val.json"))
+TEST_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_test.json"))
+#VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_val.json"))
 IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes"))
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
 OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res"))
 
 # PARÁMETROS:
 
-# > lora_r
-# > mm_projector_lr
-# > num train epochs
-# > per_device_train_batch_size
-# > gradient_accumulation_steps
-# > learning_rate
-# > warmup_ratio
-# > model_max_length
-
+# > lora_r [8,64]
+# > num_train_epochs [1,10]
+# > gradient_accumulation_steps [1-10]
+# > learning_rate [2e-5,4e-3]
 
 finetune_script = f'''
 {DEEPSPEED_SCRIPT} \
@@ -61,7 +57,7 @@ finetune_script = f'''
     --report_to wandb
 '''
 
-
+# conjunto de validación requiero modificar train.py
 # report_to wandb para seguimiento en Weights & Biases
 # sin LORA puede que falte memoria en GPU
 
