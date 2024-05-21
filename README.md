@@ -56,7 +56,7 @@ El porcentaje de datos en cada conjunto es por defecto 70% _TRAIN_, 10% _VAL_ y 
 - Si *train_ratio+test_ratio=1* se crearán el conjunto de entrenamiento y el de prueba
 - Si *train_ratio+test_ratio<1* se crearán, además de dichos conjuntos, el conjunto de validación con el porcentaje restante de datos.
 
-De esta forma la partición se llevará a cabo de forma automática según los intereses.
+De esta forma la partición se llevará a cabo de forma automática según los intereses, si bien para nuestro caso consideraremos únicamente los conjuntos de entrenamiento y prueba.
 
 
 ## Descarga del modelo
@@ -101,18 +101,11 @@ En caso de ejecutar el código desde el mismo directorio donde se aloja el scrip
 
 ```
 TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_train.json")) # Cambiar según el caso
-VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_val.json")) # Cambiar según el caso
 IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes")) # Cambiar según el caso
 OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res")) # Cambiar según el caso
 ```
 
-NOTA: para poder usar el conjunto de validación durante el entrenamiento será necesario hacer unas cuantas modificaciones al script de entrenamiento _train.py_, pues está diseñado para considerar únicamente el conjunto de entrenamiento. Dicho script se encuentra en _model/LLaVA/llava/train_, y su código comienza con tres clases muy importantes:
-
-- ModelArguments
-- DataArguments
-- TrainingArguments
-
-Los atributos de estas clases son los argumentos (parámetros) que indicaremos en el stream de _Deepspeed_ que construiremos en el siguiente paso.
+NOTA: para poder usar el conjunto de validación durante el entrenamiento será necesario hacer unas cuantas modificaciones al script de entrenamiento _train.py_, pues está diseñado para considerar únicamente el conjunto de entrenamiento.
 
 ### Parámetros
 
@@ -158,20 +151,14 @@ finetune_script = f'''
     --report_to wandb
 '''
 ```
-Como ya se ha dicho, los parámetros *training_data_path* y *validation_data_path* no existen per se en el script _train.py_. Para solucionarlo y hacer posible la validación de los datos deberán realizarse las siguientes modificaciones en _train.py_:
-
-1. 
-2. 
-3. 
-4. 
-5. 
+Algunos de los parámetros más importantes del stream se definen en las clases _ModelArguments_, _DataArguments_ y _TrainingArguments_ del script _train.py_, ubicado en _model/LLaVA/llava/train_.
 
 Vamos ahora con una breve explicación del resto de parámetros que aparecen en el stream:
 
 - *lora_enable*: activa el uso de __LoRA__.
-- *lora_r*: rango de la descomposición de matrices en __LoRA__. El rango común en fine-tuning de LLMs es de 8 a 64, pero un mayor rango mejora la capacidad del modelo.
+- *lora_r*: rango de la descomposición de matrices en __LoRA__.
 - *lora_alpha*: ayuda a preservar la estabilidad numérica. El valor habitual ronda 16.
-- *mm_projector_lr*: ratio de aprendizaje separado para el proyector multimodal.
+- *mm_projector_lr*: tasa de aprendizaje separado para el proyector multimodal.
 - *deepspeed*: especifica la configuración deepspeed zero stage 3 para el entrenamiento.
 - *mm_projector_type*: tipo de proyector multimodal, fijado a un MLP con función de activación GeLu.
 - *mm_vision_select_layer*: especifica la capa del modelo de visión que usará para la fusión multimodal.
@@ -191,12 +178,18 @@ Vamos ahora con una breve explicación del resto de parámetros que aparecen en 
 - *dataloader_num_workers*: número de procesos de carga de datos.
 - *report_to wandb*: opción de monitoreo que proporciona un seguimiento del progreso y métricas de rendimiento a tiempo real.
 
-De todos ellos, es importante identificar cuáles van a ser los más importantes, y los que habrá que modificar para evaluar los resultados obtenidos. Dichos parámetros son, principalmente
-> num train epochs
-> per_device_train_batch_size
-> gradient_accumulation_steps
-> learning_rate
-> warmup_ratio
+#### Parámetros Importantes
+
+De todos los parámetros, es pertinente identificar cuáles van a ser los más importantes, pues serán los que habrá que modificar para evaluar los resultados obtenidos. Dichos parámetros son, principalmente
+- lora_r: el rango común en fine-tuning de LLMs es de 8 a 64.
+$$lora\_ r\in[8,64]$$
+- num_train_epochs: el número de épocas suele ser de 1 a 10, si bien valores de 3 o 4 son bastante comunes.
+$$num\_ train\_ epochs\in[1,10]$$
+- gradient_accumulation_steps: generalmente se escoge un valor entre 1 y 10.
+$$gradient\_ accumulation\_ steps\in[1,10]$$
+- learning_rate: se suele tomar una tasa de aprendizaje en torno a los órdenes de e-5 hasta e-3, siendo comunes los órdenes de e-4.
+$$learning\_ rate\in[2\cdot10^{-5},4\cdot10^{-3}]$$
+
 
 En caso de lanzarlo sin LORA, deberá eliminarse toda la primera línea del stream:
 ```
@@ -244,7 +237,7 @@ wandb: (2) Use an existing W&B account
 wandb: (3) Don't visualize my results
 wandb: Enter your choice: 
 ```
-Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [**Weights & Biases**](https://wandb.ai/site). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. **Wandb** es una buena herramienta para realizar un estudio en detalle, pero si no se piensa usar puede eliminarse la última orden del stream, ```report_to wandb```. En ocasiones puede dar problemas si el programa es lanzado desde el script o con _nohup_, debido al cuadro de diálogo que genera.
+Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [**Weights & Biases**](https://wandb.ai/site) (en tal caso se requerirá una ID que habrá que introducir por terminal). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. **Wandb** es una buena herramienta para realizar un estudio en detalle, pero si no se piensa usar puede eliminarse la última orden del stream, ```report_to wandb```. En ocasiones puede dar problemas si el programa es lanzado desde el script o con _nohup_, debido al cuadro de diálogo que genera.
 
 Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU (reducir *batch_size* en tal caso). En otra terminal puede estudiarse el uso de memoria del entrenamiento a tiempo de ejecución real (actualizado cada medio segundo) mediante:
 ```
@@ -275,7 +268,7 @@ root
 - *non_lora_trainables.bin*: almacena los pesos entrenados de las partes del modelo que no están cubiertas por los adaptadores **LoRA**.
 - *trainer_state.json*: contiene el estado del entrenador, incluyendo el estado del optimizador, el scheduler de aprendizaje, y otras estadísticas del entrenamiento.
 
-La carpeta _wandb_ almacena los registros y artefactos de entrenamiento enviados a **W&B**. Incluye gráficos de métricas de entrenamiento y otros datos de seguimiento.
+La carpeta _wandb_ almacena los registros y artefactos de entrenamiento enviados a **W&B**. Incluye gráficos de métricas de entrenamiento y otros datos de seguimiento que pueden consultarse en la página de **Weights & Biases**, como el la pérdida, la época y la tasa de aprendizaje en función del paso del entrenamiento.
 
 ## Evaluación
 
@@ -289,8 +282,12 @@ Para la evaluación de los resultados usaremos varias métricas de error para an
 
 En las fórmulas anteriores, $P_i$ representa la _precisión_ dada por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la predicción), y $R_i$ representa el _racall_ dado por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la referencia). En nuestro caso usaremos **BLEU_4**, **ROUGE_1** y **ROUGE_2**. En el caso de la métrica **METEOR**, $p$ es la penalización, calculada como el número de bloques en la predicción (grupos de unigramas que aparecen en el mismo orden que en la referencia) entre el número de unigramas en la predicción.
 
+Estas métricas de error las usaremos para evaluar los resultados del entrenamiento, pues pretendemos valorar su desempeño a la hora de generar el texto.
+
 2. Métrica de **imagen**:
 
     - [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
 $$CIDEr_n(c_i,S_i)=\dfrac{1}{m}\sum_i\dfrac{g^n(c_i)\cdot g^n(s_{i,j})}{||g^n(c_i)||\cdot||g^n(s_{i,j})},$$
 $$g_k(s_{ij})=\dfrac{h_k(s_{ij})}{\sum_{w_j\in\Omega}h_l(s_{ij})}\log\left(\dfrac{|I|}{\sum_{I_p\in I}\min(1,\sum_qh_k(s_{pq}))}\right).$$
+
+A diferencia de las anteriores, esta métricas de error las usaremos en el proceso de evaluación con el conjunto de prueba, pues necesitaremos estudiar el desempeño del modelo en tareas multimodales de imagen y texto.
