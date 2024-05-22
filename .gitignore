@@ -3,3 +3,5 @@ model
 res
 wandb
 log.txt
+controller.log
+gradio_web_server.log
