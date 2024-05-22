@@ -222,11 +222,7 @@ Si da problemas, puede ser por varios motivos:
 - Rutas mal especificadas o enlaces incorrectos.
 - Librerías no instaladas como flash-attn ```pip install flash-attn --no-build-isolation```, indispensable para el funcionamiento del script _train.py_.
 - No suficiente memoria en GPU: con cuatro **Nvidia H100 de 80GB** puede llegar a ocupar +50000Mib de memoria en cada una. Para lidiar con este problema puede disminuirse el *batch_size* (el mínimo es 2).
-- Error de subprocess: en este caso se puede probar a hacer un print del stream ```print(finetune_script)``` y ejecutarlo **desde terminal**:
-```
-deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path /datassd/home/anavarroa/tfm-modelos-multimodales/data/dataset.json     --image_folder /datassd/home/anavarroa/tfm-modelos-multimodales/data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir /datassd/home/anavarroa/tfm-modelos-multimodales/res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb
-```
-De esta forma al menos se puede identificar el error más fácilmente, pues el mensaje dado por _subprocess_ no es muy concreto.
+- Error de subprocess: en este caso se puede probar a hacer un print del stream ```print(finetune_script)``` y ejecutarlo **desde terminal**. De esta forma al menos se puede identificar el error más fácilmente, pues el mensaje dado por _subprocess_ no es muy concreto.
 
 ### Éxito
 
@@ -237,7 +233,11 @@ wandb: (2) Use an existing W&B account
 wandb: (3) Don't visualize my results
 wandb: Enter your choice: 
 ```
-Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [**Weights & Biases**](https://wandb.ai/site) (en tal caso se requerirá una ID que habrá que introducir por terminal). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. **Wandb** es una buena herramienta para realizar un estudio en detalle, pero si no se piensa usar puede eliminarse la última orden del stream, ```report_to wandb```. En ocasiones puede dar problemas si el programa es lanzado desde el script o con _nohup_, debido al cuadro de diálogo que genera.
+Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [**Weights & Biases**](https://wandb.ai/site) (en tal caso se requerirá una ID que habrá que introducir por terminal). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. **Wandb** es una buena herramienta para realizar un estudio en detalle, pero si no se piensa usar puede eliminarse la última orden del stream, ```report_to wandb```. El cuadro de diálogo que crea _Wandb_ dará problemas si el programa es ejecutado en segundo plano. Sin embargo, una vez se haya lanzado una vez se registrará la ID de **W&B**, y podrá ejecutarse sin problemas con _nohup_:
+
+```
+nohup deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path /datassd/home/anavarroa/tfm-modelos-multimodales/data/dataset.json     --image_folder /datassd/home/anavarroa/tfm-modelos-multimodales/data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir /datassd/home/anavarroa/tfm-modelos-multimodales/res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb > log.txt &
+```
 
 Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU (reducir *batch_size* en tal caso). En otra terminal puede estudiarse el uso de memoria del entrenamiento a tiempo de ejecución real (actualizado cada medio segundo) mediante:
 ```
@@ -277,7 +277,7 @@ Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunt
 Para la evaluación de los resultados usaremos varias métricas de error para analizar tanto las tareas multimodales de **captioning** y **VQA**, como las monomodales de **NLP**:
 1. Métricas de **NLP**:
     - **BLEU** (Bilingual Evaluation Understudy): $$BLEU_k=\sqrt[n]{\prod_{i=1}^k P_i}.$$
-    - **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation): $$ROUGE_k=2\dfrac{P_kR_k}{P_k+R_k}$$
+    - **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation): $$ROUGE_k=2\dfrac{P_kR_k}{P_k+R_k}.$$
     - **METEOR** (Metric for Evaluation of Translation with Explicit Ordering): $$METEOR=\dfrac{10P_1R_1}{R_1+9P_1}(1-0.5p^3).$$
 
 En las fórmulas anteriores, $P_i$ representa la _precisión_ dada por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la predicción), y $R_i$ representa el _racall_ dado por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la referencia). En nuestro caso usaremos **BLEU_4**, **ROUGE_1** y **ROUGE_2**. En el caso de la métrica **METEOR**, $p$ es la penalización, calculada como el número de bloques en la predicción (grupos de unigramas que aparecen en el mismo orden que en la referencia) entre el número de unigramas en la predicción.
