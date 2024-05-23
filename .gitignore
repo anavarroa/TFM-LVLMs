@@ -5,3 +5,4 @@ wandb
 log.txt
 controller.log
 gradio_web_server.log
+model_worker*
