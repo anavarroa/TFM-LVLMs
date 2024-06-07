@@ -1,4 +1,8 @@
-# TFM Modelos Multimodales
+# LLaVA 1.5-7B para tareas de Image Captioning y VQA con un dataset de Remote Sensing personalizado.
+
+<div align="center">
+  <img src="imagen.jpeg" alt="LLaVA 1.5 para RS" width="25%">
+</div>
 
 ## Conjunto de datos
 
@@ -244,7 +248,7 @@ Obtener un error pasado este punto es muy posiblemente debido a una falta de mem
 watch -n 0.5 nvidia-smi
 ```
 
-Llegado el momento una barra de carga irá completándose hasta suplir el *num_train_epochs* indicadas, convergiendo al *learning_rate* e indicando la pérdida (*loss*). Esto puede tomar un tiempo largo, dependiendo del número de épocas. El proceso terminará con un historial y resumen de ejecución. Al terminar el proceso se habrá creado una carpeta _wandb_ paralela a _data_, _model_ y _src_ con todos los datos del proceso, así como una serie de resultados en varios formatos dentro de la carpeta indicada por **OUTPUT_DIR**.
+Llegado el momento una barra de carga irá completándose hasta suplir el *num_train_epochs* indicadas, convergiendo al *learning_rate* e indicando la pérdida (*loss*). Esto puede tomar un tiempo largo, dependiendo del número de épocas. El proceso terminará con un historial y resumen de ejecución, guardado en el archivo _log.txt_, el cual conviene guardar en algún lugar. Al terminar el proceso se habrá creado una carpeta _wandb_ paralela a _data_, _model_ y _src_ con todos los datos del proceso, así como una serie de resultados en varios formatos dentro de la carpeta indicada por **OUTPUT_DIR**.
 
 ```
 root
@@ -258,6 +262,8 @@ root
 │   ├── non_lora_trainables.bin
 │   ├── README.md
 │   └── trainer_state.json
+├── logs
+│   └── log.txt
 └── wandb
     └── ...
 ```
@@ -269,6 +275,26 @@ root
 - *trainer_state.json*: contiene el estado del entrenador, incluyendo el estado del optimizador, el scheduler de aprendizaje, y otras estadísticas del entrenamiento.
 
 La carpeta _wandb_ almacena los registros y artefactos de entrenamiento enviados a **W&B**. Incluye gráficos de métricas de entrenamiento y otros datos de seguimiento que pueden consultarse en la página de **Weights & Biases**, como el la pérdida, la época y la tasa de aprendizaje en función del paso del entrenamiento.
+
+Los checkpoints del entrenamiento (marcados por el valor de *save_steps* que indiquemos), se irán sobreescribiendo. Si queremos mantenerlos para el posterior análisis deberemos lanzar el script [copy_checkpoints.py](src/main/python/copy_checkpoints.py), que creará una carpeta en _res_ donde moverá los checkpoints nada más sean creados. Para lanzarlo, se usará también _nohup_:
+```
+nohup python -u  /datassd/proyectos/tfm-alvaro/tfm-modelos-multimodales/src/main/python/copy_checkpoint.py > copy_check.txt &
+```
+
+Para detener cualquiera de los procesos activos en _nohup_, tomar el número de identificación del proceso y escribir en terminal
+```
+kill -9 [ID]
+```
+
+Es importante tener en cuenta que para el posterior correcto funcionamiento de los scripts habrá que renombrar las carpetas *train_x_x_x* creadas por el script por otro nombre que contenga las palabras *llava* y *lora* explícitamente (como *llava_lora_train_x_x_x*), pues de no ser así no podrán ser mergeados los checkpoints. Este proceso de mergeo podremos llevarlo a cabo con el script [merge_lora_weights.py](/datassd/proyectos/tfm-alvaro/tfm-modelos-multimodales/model/LLaVA/scripts/merge_lora_weights.py) que proporciona el propio modelo de LLaVA.
+
+Además, será necesario que el checkpoint que queramos mergear contenga un archivo **config.json**. De no ser así, AAAAAAAAAAA
+
+Para ello, elegiremos una nueva carpeta _prueba_ donde guardar los resultados y escribiremos por terminal
+
+```
+python model/LLaVA/scripts/merge_lora_weights.py --model-path res/llava_lora_train_x_x_x/checkpoint-x --model-base liuhaotian/llava-v1.5-7b --save-model-path prueba/
+```
 
 ## Evaluación
 
@@ -291,3 +317,28 @@ $$CIDEr_n(c_i,S_i)=\dfrac{1}{m}\sum_i\dfrac{g^n(c_i)\cdot g^n(s_{i,j})}{||g^n(c_
 $$g_k(s_{ij})=\dfrac{h_k(s_{ij})}{\sum_{w_j\in\Omega}h_l(s_{ij})}\log\left(\dfrac{|I|}{\sum_{I_p\in I}\min(1,\sum_qh_k(s_{pq}))}\right).$$
 
 A diferencia de las anteriores, esta métricas de error las usaremos en el proceso de evaluación con el conjunto de prueba, pues necesitaremos estudiar el desempeño del modelo en tareas multimodales de imagen y texto.
+
+
+### Scripts de evaluación
+La carpeta _evaluation_ contiene una serie de scripts que deberemos ir ejecutando para poder llevar a cabo la evaluación de nuestro modelo en función de la métrica **CIDEr**.
+
+```
+root
+├── data
+├── model
+├── res
+├── src
+│   └── main
+│       └── python
+│           └── evaluation
+│               ├── check_df.py
+│               ├── cider_scorer.py
+│               ├── cider.py
+│               ├── custom_df.py
+│               └── evaluation.py
+└── wandb
+```
+
+1. En primer lugar, ejecutaremos el script [custom_df.py](src/main/python/evaluation/custom_df.py). Este programa nos creará un archivo **df.p** que contiene un diccionario con las frencuencias de documentos calculadas a partir de los conjuntos de referencia.
+2. Como el archivo **df.p** es binario, si queremos visualizarlo podemos ejecutar el script [check_df.py](src/main/python/evaluation/check_df.py), que mostrará 50 entradas del archivo, donde cada entrada es una tupla de un n-grama y su frecuencia de documento. Además, proporcionará la longitud de referencia logarítmica del conjunto de datos de referencia.
+3. Una vez tenemos el diccionario de frecuencias, ejecutar el script [evaluation.py](src/main/python/evaluation/evaluation.py) para obtener la métrica **CIDEr**. Habrá que especificar la ruta de nuestro modelo entrenado.
