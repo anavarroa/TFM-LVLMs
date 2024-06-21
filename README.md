@@ -296,27 +296,43 @@ Para ello, elegiremos una nueva carpeta _prueba_ donde guardar los resultados y 
 python model/LLaVA/scripts/merge_lora_weights.py --model-path res/llava_lora_train_x_x_x/checkpoint-x --model-base liuhaotian/llava-v1.5-7b --save-model-path prueba/
 ```
 
+## Inferencia
+
+Una vez el modelo ha sido entrenado, y antes de generar predicciones, debemos hacerle unas cuantas cosas antes.
+1. En primer lugar deberemos entrenarlo desde los checkpoints una pequeña fracción de época más, para generar así el archivo _config.json_ que guarda la configuración del modelo. Para ello se usará el script ---.
+2. Con el archivo _config.json_ podemos proceder a mergear los pesos de **LoRA** con el script ---.
+
+Ahora el modelo está listo para la inferencia. Para probarlo puede lanzarse en **Gradio** mediante los siguientes comandos:
+
+```
+python -m llava.serve.controller --host 0.0.0.0 --port 10000
+```
+
+```
+python -m llava.serve.gradio_web_server --controller http://localhost:10000 --model-list-mode reload
+```
+
+```
+CUDA_VISIBLE_DEVICES=0 python -m llava.serve.model_worker --host 0.0.0.0 --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-path [...] --model-base liuhaotian/llava-v1.5-7b
+```
+
+Para probarlo desde la terminal puede lanzarse el _llava.serve.cli_:
+
+```
+python -m llava.serve.cli --model-path [...] --model-base liuhaotian/llava-v1.5-7b --image-file [...]
+```
+
+Para generar un archivo JSON con todas las predicciones del modelo sobre el conjunto de prueba, deberá accederse al script [generate.py]{} dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. El script generará un archivo _final.json_ con la misma estructura que los datasets. Se deberá repetir
+
 ## Evaluación
 
-Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento y validación, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
+Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
 
-Para la evaluación de los resultados usaremos varias métricas de error para analizar tanto las tareas multimodales de **captioning** y **VQA**, como las monomodales de **NLP**:
-1. Métricas de **NLP**:
-    - **BLEU** (Bilingual Evaluation Understudy): $$BLEU_k=\sqrt[n]{\prod_{i=1}^k P_i}.$$
-    - **ROUGE** (Recall-Oriented Understudy for Gisting Evaluation): $$ROUGE_k=2\dfrac{P_kR_k}{P_k+R_k}.$$
-    - **METEOR** (Metric for Evaluation of Translation with Explicit Ordering): $$METEOR=\dfrac{10P_1R_1}{R_1+9P_1}(1-0.5p^3).$$
-
-En las fórmulas anteriores, $P_i$ representa la _precisión_ dada por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la predicción), y $R_i$ representa el _racall_ dado por los $i$-gramas (número de $i$-gramas coincidentes entre número de $i$-gramas en la referencia). En nuestro caso usaremos **BLEU_4**, **ROUGE_1** y **ROUGE_2**. En el caso de la métrica **METEOR**, $p$ es la penalización, calculada como el número de bloques en la predicción (grupos de unigramas que aparecen en el mismo orden que en la referencia) entre el número de unigramas en la predicción.
-
-Estas métricas de error las usaremos para evaluar los resultados del entrenamiento, pues pretendemos valorar su desempeño a la hora de generar el texto.
-
-2. Métrica de **imagen**:
+Para la evaluación de los resultados usaremos una métrica de error específica para las tareas multimodales de **captioning** y **VQA**:
 
     - [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
 $$CIDEr_n(c_i,S_i)=\dfrac{1}{m}\sum_i\dfrac{g^n(c_i)\cdot g^n(s_{i,j})}{||g^n(c_i)||\cdot||g^n(s_{i,j})},$$
 $$g_k(s_{ij})=\dfrac{h_k(s_{ij})}{\sum_{w_j\in\Omega}h_l(s_{ij})}\log\left(\dfrac{|I|}{\sum_{I_p\in I}\min(1,\sum_qh_k(s_{pq}))}\right).$$
-
-A diferencia de las anteriores, esta métricas de error las usaremos en el proceso de evaluación con el conjunto de prueba, pues necesitaremos estudiar el desempeño del modelo en tareas multimodales de imagen y texto.
 
 
 ### Scripts de evaluación
