@@ -327,7 +327,7 @@ Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, s
 - Modificaciones necesarias para poder ser lanzado como subprocess.
 - Interrupción de la ejecución al recibir la orden "stop".
 
-El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py](src/main/python/inference/subset_test.py), en el que podemos indicar el tamaño de los subconjuntos (150 por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_.
+El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py](src/main/python/inference/subset_test.py), en el que podemos indicar el tamaño de los subconjuntos (150 por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_. Una vez realizada la partición no debe modificarse para no alterar resultados entre modelos distintos.
 
 Con estas modificaciones, ya podemos usar nuestro conjunto de prueba para generar predicciones. Para obtener un archivo JSON con todas las predicciones del modelo, deberá accederse al script [generate.py](src/main/python/inference/generate.py) dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. El script generará un archivo *filter_final.json* para cada subconjunto y mergeará todos ellos al terminar, creando un archivo *final.json* con la misma estructura que los datasets y las predicciones.
 
@@ -336,7 +336,7 @@ Para lanzar el script lo mejor es usar de nuevo _nohup_, pues tardará unas cuan
 ```
 nohup python src/main/python/evaluation/generate.py > gen_log.txt &
 ```
-Si todo sale bien se obtendrá el JSON listo para evaluar dentro de una carpeta _results_. El proceso deberá repetirse tantas veces como de modelos entrenados se disponga, y para el modelo base para su posterior comparación.
+Si todo sale bien se obtendrá el _JSON_ listo para evaluar dentro de una carpeta _results_. El proceso deberá repetirse tantas veces como de modelos entrenados se disponga, modificando en cada caso la orden _--model-path_ en el comando del script. Se recomienda almacenar o renombrar los resultados para cada modelo. Para hacer inferencia con el modelo base de **LLaVA** y poder así comparar, mirar el siguiente subapartado.
 
 **NOTA**: si el proceso tarda demasiado puede deberse a un problema de GPU, por lo que se recomienda no paralelizar y ocupar una única GPU lo más vacía posible. Si es necesario puede disminuirse el tamaño del conjunto de prueba mediante el script [filter_test.py](src/main/python/inference/filter_test.py), si el tiempo de carga o inferencia fuese demasiado grande.
 
@@ -350,6 +350,20 @@ data
 │   ├── data_train.json
 │   └── data_test.json
 └── dataset.json
+results
+└── final.json
+```
+
+### Caso particular
+Para la generación de predicciones con el modelo base deberán hacerse unas ligeras modificaciones al script de inferencia [generate.py](src/main/python/inference/generate.py). Este modelo está construido de forma que ciertas palabras clave cambien, luego se deberán sustituir las palabras "Human" y "Assistant" por "USER" y "ASSISTANT" respectivamente para que se copian de forma correcta las predicciones.
+
+De igual manera, se deberán modificar los parámetros del comando, poniendo en este caso como _--model-path_ el del modelo base y eliminando la orden _--model-base_:
+
+```
+command = [
+    "python", "/datassd/proyectos/tfm-alvaro/model/LLaVA/llava/serve/cli.py",
+    "--model-path", "liuhaotian/llava-v1.5-7b"
+]
 ```
 
 
