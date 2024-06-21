@@ -4,13 +4,13 @@ import os
 DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
 DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
 MODEL_NAME = "liuhaotian/llava-v1.5-7b"
-DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","dataset.json"))
-TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_train.json"))
-TEST_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_test.json"))
-#VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_val.json"))
-IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes"))
+DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","dataset.json"))
+TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","sets","data_train.json"))
+TEST_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","sets","data_test.json"))
+#VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","sets","data_val.json"))
+IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","imagenes"))
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
-OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res"))
+OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","res"))
 
 # PARÁMETROS:
 
@@ -70,5 +70,5 @@ torch.cuda.empty_cache()
 import subprocess
 print(finetune_script)
 
-result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
-print(result.stdout)
+#result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
+#print(result.stdout)
