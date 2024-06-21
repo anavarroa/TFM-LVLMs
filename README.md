@@ -4,6 +4,20 @@
   <img src="imagen.jpeg" alt="LLaVA 1.5 para RS" width="25%">
 </div>
 
+1. [Conjunto de datos](#conjunto-de-datos)
+   - [Descarga del dataset](#descarga-del-dataset)
+   - [Partición](#partición)
+2. [Descarga del modelo](#descarga-del-modelo)
+3. [Carga del modelo preentrenado](#carga-del-modelo-preentrenado)
+   - [Rutas](#rutas)
+   - [Parámetros](#parámetros)
+   - [Parámetros Importantes](#parámetros-importantes)
+4. [Entrenamiento](#entrenamiento)
+   - [Errores](#errores)
+   - [Éxito](#éxito)
+5. [Inferencia](#inferencia)
+6. [Evaluación](#evaluación)
+
 ## Conjunto de datos
 
 El dataset de entrenamiento original se llama [**NWPU-RSICD-UAV-UCM-LR-DOTA-instructions**](https://huggingface.co/datasets/BigData-KSU/RS-instructions-dataset/blob/main/NWPU-RSICD-UAV-UCM-LR-DOTA-intrcutions.json), y consta de datos de varios datasets de _Remote Sensing_ (RS). El dataset deberá ser editado para que contenga datos de únicamente cuatro conjuntos principales: **NWPU**, **RSICD**, **LR** y **DOTA**. De ello se encargará el script [data_preparation](src/main/python/data_preparation.py) del que se habla abajo.
@@ -269,7 +283,7 @@ La carpeta _wandb_ almacena los registros y artefactos de entrenamiento enviados
 
 Los checkpoints del entrenamiento (marcados por el valor de *save_steps* que indiquemos), se irán sobreescribiendo. Si queremos mantenerlos para el posterior análisis deberemos lanzar el script [copy_checkpoints.py](src/main/python/copy_checkpoints.py), que creará una carpeta en _res_ donde moverá los checkpoints nada más sean creados. Para lanzarlo, se usará también _nohup_:
 ```
-nohup python -u  /datassd/proyectos/tfm-alvaro/tfm-modelos-multimodales/src/main/python/copy_checkpoint.py > copy_check.txt &
+nohup python -u  .../src/main/python/copy_checkpoint.py > copy_check.txt &
 ```
 
 Es importante tener en cuenta que para el posterior correcto funcionamiento de los scripts habrá que renombrar las carpetas *train_x_x_x* creadas por el script por otro nombre que contenga las palabras *llava* y *lora* explícitamente (como *llava_lora_train_x_x_x*), pues de no ser así no podrán ser mergeados los checkpoints. Este proceso de mergeo podremos llevarlo a cabo con el script [merge_lora_weights.py](/datassd/proyectos/tfm-alvaro/tfm-modelos-multimodales/model/LLaVA/scripts/merge_lora_weights.py) que proporciona el propio modelo de LLaVA.
@@ -307,16 +321,15 @@ Para probarlo desde la terminal puede lanzarse el _llava.serve.cli_:
 python -m llava.serve.cli --model-path [...] --model-base liuhaotian/llava-v1.5-7b --image-file [...]
 ```
 
-Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, sin embargo no permite la automatización de la generación de predicciones. Es por ello que para proseguir se recomienda sustituir este script con el cli.py modificado que se encuentra en el repositorio. El funcionamiento del script ha sido cambiado para satisfacer las necesidades del proyecto, añadiendo los siguientes cambios:
+Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, sin embargo no permite la automatización de la generación de predicciones. Es por ello que para proseguir es necesario sustituir su código con el del [cli.py](cli.py) modificado que se encuentra en el repositorio. El funcionamiento del script ha sido cambiado para satisfacer las necesidades del proyecto, añadiendo los siguientes cambios:
 - Capacidad de introducir la imagen como input en lugar de como parámetro.
 - Posibilidad de analizar y predecir sobre varias imágenes con una única carga del modelo. Escribiendo "exit" en un prompt, se podrá introducir la ruta de una nueva imagen.
 - Modificaciones necesarias para poder ser lanzado como subprocess.
 - Interrupción de la ejecución al recibir la orden "stop".
 
-El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py]{/datassd/home/anavarroa/tfm-modelos-multimodales/subset_test.py}, en el que podemos indicar el tamaño de los subconjuntos ($150$ por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_.
+El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py](src/main/python/inference/subset_test.py), en el que podemos indicar el tamaño de los subconjuntos (150 por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_.
 
-
-Con estas modificaciones, ya podemos usar nuestro conjunto de prueba para generar predicciones. Para obtener un archivo JSON con todas las predicciones del modelo, deberá accederse al script [generate.py]{/datassd/home/anavarroa/tfm-modelos-multimodales/src/main/python/evaluation/generate.py} dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. El script generará un archivo *filter_final.json* para cada subconjunto y mergeará todos ellos al terminar, creando un archivo *final.json* con la misma estructura que los datasets y las predicciones.
+Con estas modificaciones, ya podemos usar nuestro conjunto de prueba para generar predicciones. Para obtener un archivo JSON con todas las predicciones del modelo, deberá accederse al script [generate.py](src/main/python/inference/generate.py) dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. El script generará un archivo *filter_final.json* para cada subconjunto y mergeará todos ellos al terminar, creando un archivo *final.json* con la misma estructura que los datasets y las predicciones.
 
 Para lanzar el script lo mejor es usar de nuevo _nohup_, pues tardará unas cuantas horas:
 
@@ -325,15 +338,24 @@ nohup python src/main/python/evaluation/generate.py > gen_log.txt &
 ```
 Si todo sale bien se obtendrá el JSON listo para evaluar dentro de una carpeta _results_. El proceso deberá repetirse tantas veces como de modelos entrenados se disponga, y para el modelo base para su posterior comparación.
 
-**NOTA**: si el proceso tarda demasiado puede deberse a un problema de GPU, por lo que se recomienda no paralelizar y ocupar una única GPU lo más vacía posible.
+**NOTA**: si el proceso tarda demasiado puede deberse a un problema de GPU, por lo que se recomienda no paralelizar y ocupar una única GPU lo más vacía posible. Si es necesario puede disminuirse el tamaño del conjunto de prueba mediante el script [filter_test.py](src/main/python/inference/filter_test.py), si el tiempo de carga o inferencia fuese demasiado grande.
 
+```
+data
+├── imagenes
+├── sets
+│   ├── filter
+│   │   └── ...
+│   ├── filtered_test.json
+│   ├── data_train.json
+│   └── data_test.json
+└── dataset.json
+```
 
 
 ## Evaluación
 
-Una vez ha terminado el fine-tuning y el modelo ha sido entrenado con el conjunto de entrenamiento, es momento de pasar a la evaluación de resultados, usando el conjunto de prueba. El modelo finetuneado ocupa menos memoria en GPU, por lo que ya no supondrá tanto problema.
-
-Para la evaluación de los resultados usaremos una métrica de error específica para las tareas multimodales de **captioning** y **VQA**:
+Una vez ha terminado el fine-tuning y se dispone de las predicciones, es momento de pasar a la evaluación de resultados. Para la evaluación de los resultados usaremos una métrica de error específica para las tareas multimodales de **captioning** y **VQA**:
 
     - [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
 $$CIDEr_n(c_i,S_i)=\dfrac{1}{m}\sum_i\dfrac{g^n(c_i)\cdot g^n(s_{i,j})}{||g^n(c_i)||\cdot||g^n(s_{i,j})},$$
@@ -341,7 +363,7 @@ $$g_k(s_{ij})=\dfrac{h_k(s_{ij})}{\sum_{w_j\in\Omega}h_l(s_{ij})}\log\left(\dfra
 
 
 ### Scripts de evaluación
-La carpeta _evaluation_ contiene una serie de scripts que deberemos ir ejecutando para poder llevar a cabo la evaluación de nuestro modelo en función de la métrica **CIDEr**.
+La carpeta _evaluation_ contiene una serie de scripts que permiten el cálculo correcto de la métrica **CIDEr**:
 
 ```
 root
@@ -352,14 +374,12 @@ root
 │   └── main
 │       └── python
 │           └── evaluation
-│               ├── check_df.py
 │               ├── cider_scorer.py
 │               ├── cider.py
-│               ├── custom_df.py
 │               └── evaluation.py
 └── wandb
 ```
 
-1. En primer lugar, ejecutaremos el script [custom_df.py](src/main/python/evaluation/custom_df.py). Este programa nos creará un archivo **df.p** que contiene un diccionario con las frencuencias de documentos calculadas a partir de los conjuntos de referencia.
-2. Como el archivo **df.p** es binario, si queremos visualizarlo podemos ejecutar el script [check_df.py](src/main/python/evaluation/check_df.py), que mostrará 50 entradas del archivo, donde cada entrada es una tupla de un n-grama y su frecuencia de documento. Además, proporcionará la longitud de referencia logarítmica del conjunto de datos de referencia.
-3. Una vez tenemos el diccionario de frecuencias, ejecutar el script [evaluation.py](src/main/python/evaluation/evaluation.py) para obtener la métrica **CIDEr**. Habrá que especificar la ruta de nuestro modelo entrenado.
+Para la evaluación, simplemente se indicarán las rutas de los JSONs (conjunto de prueba y predicciones) en el script [evaluation.py](src/main/python/evaluation/evaluation.py), y se ejecutará. Como resultado se mostrará una colección de métricas de error individuales para cada predicción y un valor de la métrica **CIDEr** general calculada como la media de todas las anteriores.
+
+
