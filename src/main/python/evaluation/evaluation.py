@@ -6,10 +6,10 @@ import numpy as np
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Cargar datos de prueba y predicciones
-with open("results/final.json", 'r') as f:
+with open("/datassd/proyectos/tfm-alvaro/results/data_test.json", 'r') as f:
     data_test = json.load(f)
 
-with open("/datassd/proyectos/tfm-alvaro/data/sets/data_test.json", 'r') as f:
+with open("/datassd/proyectos/tfm-alvaro/data/sets/final.json", 'r') as f:
     predictions = json.load(f)
 
 # ground truths y resultados
