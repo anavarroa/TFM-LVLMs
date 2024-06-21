@@ -4,13 +4,13 @@ import os
 DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
 DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
 MODEL_NAME = "liuhaotian/llava-v1.5-7b"
-DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","dataset.json"))
-TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","sets","data_train.json"))
-TEST_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","sets","data_test.json"))
-#VAL_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","sets","data_val.json"))
-IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","data","imagenes"))
+DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/dataset.json"
+TRAIN_DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/sets/data_train.json"
+TEST_DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/sets/data_test.json"
+#VAL_DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/sets/data_val.json"
+IMAGE_FOLDER = "/datassd/proyectos/tfm-alvaro/data/imagenes"
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
-OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","..","..","..","proyectos","tfm-alvaro","res"))
+OUTPUT_DIR = "/datassd/proyectos/tfm-alvaro/res"
 
 # PARÁMETROS:
 

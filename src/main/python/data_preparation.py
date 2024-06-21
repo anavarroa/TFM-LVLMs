@@ -116,8 +116,8 @@ def descarga_JSON(directorio):
 
 if __name__=='__main__':
 
-    carpeta_imagenes = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes")
-    carpeta_json = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data")
+    carpeta_imagenes = "/datassd/proyectos/tfm-alvaro/data/imagenes"
+    carpeta_json = "/datassd/proyectos/tfm-alvaro/data"
 
     descarga_LR(carpeta_imagenes)
     descarga_DOTA(carpeta_imagenes)

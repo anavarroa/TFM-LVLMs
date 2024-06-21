@@ -82,7 +82,7 @@ def crear_datasets(directorio, train_ratio, test_ratio):
         print(f"Conjunto de validación creado. ({int((1-(train_ratio+test_ratio))*100)}%)")
 
 if __name__=="__main__":
-    directorio = os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data")
+    directorio = "/datassd/proyectos/tfm-alvaro/data"
 
     # Los ratios pueden cambiarse
     train_ratio = 0.7 #70%
