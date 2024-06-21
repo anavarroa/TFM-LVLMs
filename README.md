@@ -101,19 +101,11 @@ Deberemos también indicar la ruta a nuestro conjunto de datos personalizado, as
 - **IMAGE_FOLDER**: ruta a la carpeta _data/imagenes_.
 - **OUTPUT_DIR**: ruta a la carpeta donde queremos guardar los resultados.
 
-En caso de ejecutar el código desde el mismo directorio donde se aloja el script *data_preparation*, y alojar los resultados en una carpeta _res_ paralela a _data_, _model_ y _src_, puede usarse el siguiente código:
-
-```
-TRAIN_DATA_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","sets","data_train.json")) # Cambiar según el caso
-IMAGE_FOLDER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","data","imagenes")) # Cambiar según el caso
-OUTPUT_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),"..","..","..","res")) # Cambiar según el caso
-```
-
 NOTA: para poder usar el conjunto de validación durante el entrenamiento será necesario hacer unas cuantas modificaciones al script de entrenamiento _train.py_, pues está diseñado para considerar únicamente el conjunto de entrenamiento.
 
 ### Parámetros
 
-Además de las rutas, es crucial configurar los parámetros del modelo. El siguiente stream ejecutará el entrenamiento con __LORA__, una técnica de fine-tuning más eficiente basada en la utilización de matrices de menor rango. Los parámetros ajustables son los que aparecen en él.
+Además de las rutas, es crucial configurar los parámetros del modelo. El siguiente stream ejecutará el entrenamiento con __LoRA__, una técnica de fine-tuning más eficiente basada en la utilización de matrices de menor rango. Los parámetros ajustables son los que aparecen en él.
 
 ```
 finetune_script = f'''
@@ -122,8 +114,7 @@ finetune_script = f'''
     --deepspeed {DEEPSPEED_JSON} \
     --model_name_or_path {MODEL_NAME} \
     --version v1 \
-    --training_data_path {TRAIN_DATA_PATH} \
-    --validation_data_path {VAL_DATA_PATH} \
+    --data_path {TRAIN_DATA_PATH} \
     --image_folder {IMAGE_FOLDER} \
     --vision_tower {VISION_TOWER} \
     --mm_projector_type mlp2x_gelu \
@@ -134,15 +125,15 @@ finetune_script = f'''
     --group_by_modality_length True \
     --bf16 True \
     --output_dir {OUTPUT_DIR} \
-    --num_train_epochs 1 \
-    --per_device_train_batch_size 16 \
+    --num_train_epochs 10.1 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 10 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 50000 \
+    --save_steps 300 \
     --save_total_limit 1 \
-    --learning_rate 2e-4 \
+    --learning_rate 1e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
@@ -195,13 +186,13 @@ $$gradient\_ accumulation\_ steps\in[1,10]$$
 $$learning\_ rate\in[2\cdot10^{-5},4\cdot10^{-3}]$$
 
 
-En caso de lanzarlo sin LORA, deberá eliminarse toda la primera línea del stream:
+En caso de lanzarlo sin **LoRA**, deberá eliminarse toda la primera línea del stream:
 ```
 --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5 \
 ```
 Esto, no obstante, puede llegar a dar problemas por falta de memoria en GPU.
 
-El stream anterior utiliza **DeepSpeed**, una librería de optimización de Deep Learning que proporciona una amplia gama de funciones para acelerar el entrenamiento de modelos grandes en GPU y sistemas distribuidos
+El stream anterior utiliza **DeepSpeed**, una librería de optimización de Deep Learning que proporciona una amplia gama de funciones para acelerar el entrenamiento de modelos grandes en GPU y sistemas distribuidos.
 
 ## Entrenamiento
 Antes de nada, es recomendable borrar el cache de **CUDA** para asegurar un uso de memoria eficiente:
@@ -240,7 +231,7 @@ wandb: Enter your choice:
 Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [**Weights & Biases**](https://wandb.ai/site) (en tal caso se requerirá una ID que habrá que introducir por terminal). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. **Wandb** es una buena herramienta para realizar un estudio en detalle, pero si no se piensa usar puede eliminarse la última orden del stream, ```report_to wandb```. El cuadro de diálogo que crea _Wandb_ dará problemas si el programa es ejecutado en segundo plano. Sin embargo, una vez se haya lanzado una vez se registrará la ID de **W&B**, y podrá ejecutarse sin problemas con _nohup_:
 
 ```
-nohup deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path /datassd/home/anavarroa/tfm-modelos-multimodales/data/dataset.json     --image_folder /datassd/home/anavarroa/tfm-modelos-multimodales/data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir /datassd/home/anavarroa/tfm-modelos-multimodales/res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb > log.txt &
+nohup deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path .../data/dataset.json     --image_folder .../data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir .../res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb > log.txt &
 ```
 
 Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU (reducir *batch_size* en tal caso). En otra terminal puede estudiarse el uso de memoria del entrenamiento a tiempo de ejecución real (actualizado cada medio segundo) mediante:
@@ -281,26 +272,20 @@ Los checkpoints del entrenamiento (marcados por el valor de *save_steps* que ind
 nohup python -u  /datassd/proyectos/tfm-alvaro/tfm-modelos-multimodales/src/main/python/copy_checkpoint.py > copy_check.txt &
 ```
 
-Para detener cualquiera de los procesos activos en _nohup_, tomar el número de identificación del proceso y escribir en terminal
-```
-kill -9 [ID]
-```
-
 Es importante tener en cuenta que para el posterior correcto funcionamiento de los scripts habrá que renombrar las carpetas *train_x_x_x* creadas por el script por otro nombre que contenga las palabras *llava* y *lora* explícitamente (como *llava_lora_train_x_x_x*), pues de no ser así no podrán ser mergeados los checkpoints. Este proceso de mergeo podremos llevarlo a cabo con el script [merge_lora_weights.py](/datassd/proyectos/tfm-alvaro/tfm-modelos-multimodales/model/LLaVA/scripts/merge_lora_weights.py) que proporciona el propio modelo de LLaVA.
 
-Además, será necesario que el checkpoint que queramos mergear contenga un archivo **config.json**. De no ser así, AAAAAAAAAAA
-
-Para ello, elegiremos una nueva carpeta _prueba_ donde guardar los resultados y escribiremos por terminal
+Además, será necesario que el checkpoint que queramos mergear contenga un archivo **config.json**. Para ello, elegiremos una nueva carpeta _prueba_ donde guardar los resultados y escribiremos por terminal
 
 ```
 python model/LLaVA/scripts/merge_lora_weights.py --model-path res/llava_lora_train_x_x_x/checkpoint-x --model-base liuhaotian/llava-v1.5-7b --save-model-path prueba/
 ```
 
-## Inferencia
-
 Una vez el modelo ha sido entrenado, y antes de generar predicciones, debemos hacerle unas cuantas cosas antes.
 1. En primer lugar deberemos entrenarlo desde los checkpoints una pequeña fracción de época más, para generar así el archivo _config.json_ que guarda la configuración del modelo. Para ello se usará el script ---.
 2. Con el archivo _config.json_ podemos proceder a mergear los pesos de **LoRA** con el script ---.
+
+
+## Inferencia
 
 Ahora el modelo está listo para la inferencia. Para probarlo puede lanzarse en **Gradio** mediante los siguientes comandos:
 
@@ -322,7 +307,27 @@ Para probarlo desde la terminal puede lanzarse el _llava.serve.cli_:
 python -m llava.serve.cli --model-path [...] --model-base liuhaotian/llava-v1.5-7b --image-file [...]
 ```
 
-Para generar un archivo JSON con todas las predicciones del modelo sobre el conjunto de prueba, deberá accederse al script [generate.py]{} dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. El script generará un archivo _final.json_ con la misma estructura que los datasets. Se deberá repetir
+Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, sin embargo no permite la automatización de la generación de predicciones. Es por ello que para proseguir se recomienda sustituir este script con el cli.py modificado que se encuentra en el repositorio. El funcionamiento del script ha sido cambiado para satisfacer las necesidades del proyecto, añadiendo los siguientes cambios:
+- Capacidad de introducir la imagen como input en lugar de como parámetro.
+- Posibilidad de analizar y predecir sobre varias imágenes con una única carga del modelo. Escribiendo "exit" en un prompt, se podrá introducir la ruta de una nueva imagen.
+- Modificaciones necesarias para poder ser lanzado como subprocess.
+- Interrupción de la ejecución al recibir la orden "stop".
+
+El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py]{/datassd/home/anavarroa/tfm-modelos-multimodales/subset_test.py}, en el que podemos indicar el tamaño de los subconjuntos ($150$ por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_.
+
+
+Con estas modificaciones, ya podemos usar nuestro conjunto de prueba para generar predicciones. Para obtener un archivo JSON con todas las predicciones del modelo, deberá accederse al script [generate.py]{/datassd/home/anavarroa/tfm-modelos-multimodales/src/main/python/evaluation/generate.py} dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. El script generará un archivo *filter_final.json* para cada subconjunto y mergeará todos ellos al terminar, creando un archivo *final.json* con la misma estructura que los datasets y las predicciones.
+
+Para lanzar el script lo mejor es usar de nuevo _nohup_, pues tardará unas cuantas horas:
+
+```
+nohup python src/main/python/evaluation/generate.py > gen_log.txt &
+```
+Si todo sale bien se obtendrá el JSON listo para evaluar dentro de una carpeta _results_. El proceso deberá repetirse tantas veces como de modelos entrenados se disponga, y para el modelo base para su posterior comparación.
+
+**NOTA**: si el proceso tarda demasiado puede deberse a un problema de GPU, por lo que se recomienda no paralelizar y ocupar una única GPU lo más vacía posible.
+
+
 
 ## Evaluación
 
