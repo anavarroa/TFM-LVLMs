@@ -1,5 +1,4 @@
-from .cider_scorer import CiderScorer
-
+from cider_scorer import CiderScorer
 
 class Cider:
     """
