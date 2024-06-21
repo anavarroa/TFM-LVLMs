@@ -2,7 +2,7 @@ data
 model
 res
 wandb
-*_log_*.txt
+*_log*.txt
 controller.log
 gradio_web_server.log
 model_worker*
