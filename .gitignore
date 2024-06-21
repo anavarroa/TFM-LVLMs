@@ -2,7 +2,14 @@ data
 model
 res
 wandb
-log.txt
+*_log_*.txt
 controller.log
 gradio_web_server.log
 model_worker*
+DOTA
+LR
+NWPU
+RSICD
+filter
+results
+__pycache__
