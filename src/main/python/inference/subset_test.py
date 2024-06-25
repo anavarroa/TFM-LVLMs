@@ -1,6 +1,6 @@
 import os
 import json
-SUBSET_SIZE = 150
+SUBSET_SIZE = 125
 
 # Function to create subsets of the original JSON file
 def create_json_subsets(input_json, output_dir, subset_size):
