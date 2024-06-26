@@ -13,4 +13,4 @@ RSICD
 filter
 results
 __pycache__
-check*
+check_hour.py
