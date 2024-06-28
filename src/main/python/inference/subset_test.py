@@ -1,6 +1,6 @@
 import os
 import json
-SUBSET_SIZE = 125
+SUBSET_SIZE = 100
 
 # Function to create subsets of the original JSON file
 def create_json_subsets(input_json, output_dir, subset_size):
@@ -15,7 +15,7 @@ def create_json_subsets(input_json, output_dir, subset_size):
     for i in range(0, len(data), subset_size):
         subset = data[i:i+subset_size]
         subset_num = i // subset_size + 1
-        subset_filename = os.path.join(output_dir, f'filter_{subset_num:02}.json')  # Zero-pad the subset number
+        subset_filename = os.path.join(output_dir, f'filter_{subset_num:03}.json')  # Zero-pad the subset number to three digits
         with open(subset_filename, 'w') as outfile:
             json.dump(subset, outfile, indent=4)
         print(f'Created {subset_filename}')
@@ -57,9 +57,9 @@ def process_intermediate_txt(intermediate_txt, final_txt):
 
 # Main function to execute the tasks
 def main():
-    input_json = '/datassd/proyectos/tfm-alvaro/data/sets/data_test.json'
+    input_json = '/datassd/proyectos/tfm-alvaro/data/sets/data_test_no_lr.json'
     base_path = '/datassd/proyectos/tfm-alvaro/data/imagenes'
-    output_dir = '/datassd/proyectos/tfm-alvaro/data/sets/filter'
+    output_dir = '/datassd/proyectos/tfm-alvaro/data/sets/filter_no_lr'
     
     # Step 1: Create subsets of the JSON file
     create_json_subsets(input_json, output_dir, SUBSET_SIZE)
