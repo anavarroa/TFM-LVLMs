@@ -199,6 +199,8 @@ $$gradient\_ accumulation\_ steps\in[1,10]$$
 - learning_rate: se suele tomar una tasa de aprendizaje en torno a los órdenes de e-5 hasta e-3, siendo comunes los órdenes de e-4.
 $$learning\_ rate\in[2\cdot10^{-5},4\cdot10^{-3}]$$
 
+Se recomienda mantener el tamaño global de lota (*global_batch_size*) constante durante todos los entrenamientos, calculado como
+$$global\_batch\_size=per\_device\_train\_batch\_size\times gradient\_accumulation\_steps\times num\_gpus.$$
 
 En caso de lanzarlo sin **LoRA**, deberá eliminarse toda la primera línea del stream:
 ```
@@ -321,24 +323,24 @@ Para probarlo desde la terminal puede lanzarse el _llava.serve.cli_:
 python -m llava.serve.cli --model-path [...] --model-base liuhaotian/llava-v1.5-7b --image-file [...]
 ```
 
-Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, sin embargo no permite la automatización de la generación de predicciones. Es por ello que para proseguir es necesario sustituir su código con el del [cli.py](cli.py) modificado que se encuentra en el repositorio. El funcionamiento del script ha sido cambiado para satisfacer las necesidades del proyecto, añadiendo los siguientes cambios:
+Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, sin embargo no permite la automatización de la generación de predicciones. Es por ello que para proseguir es necesario sustituir su código con el del [cli.py](cli.py) modificado que se encuentra en el repositorio. El funcionamiento del script ha sido cambiado para satisfacer las necesidades del proyecto, incorporando los siguientes cambios:
 - Capacidad de introducir la imagen como input en lugar de como parámetro.
 - Posibilidad de analizar y predecir sobre varias imágenes con una única carga del modelo. Escribiendo "exit" en un prompt, se podrá introducir la ruta de una nueva imagen.
 - Modificaciones necesarias para poder ser lanzado como subprocess.
 - Interrupción de la ejecución al recibir la orden "stop".
 
-El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py](src/main/python/inference/subset_test.py), en el que podemos indicar el tamaño de los subconjuntos (150 por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_. Una vez realizada la partición no debe modificarse para no alterar resultados entre modelos distintos.
+El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py](src/main/python/inference/subset_test.py), en el que podemos indicar el tamaño de los subconjuntos (100 por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_. Una vez realizada la partición no debe modificarse para no alterar resultados entre modelos distintos.
 
-Con estas modificaciones, ya podemos usar nuestro conjunto de prueba para generar predicciones. Para obtener un archivo JSON con todas las predicciones del modelo, deberá accederse al script [generate.py](src/main/python/inference/generate.py) dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. El script generará un archivo *filter_final.json* para cada subconjunto y mergeará todos ellos al terminar, creando un archivo *final.json* con la misma estructura que los datasets y las predicciones.
+Con estas modificaciones, ya podemos usar nuestro conjunto de prueba para generar predicciones. Para obtener un archivo JSON con todas las predicciones del modelo, deberá accederse al script [generate.py](src/main/python/inference/generate.py) dentro de la carpeta _evaluation_ e introducir la ruta a nuestro modelo en el ```"--model-path"``` y ejecutar. Conviene también modificar la ruta del dataset de ser errónea (*filter_folder*) y de la carpeta donde queramos alojas las predicciones (*results_folder*). Se recomienda que esta última ruta sea del tipo "_.../results/nombre-del-modelo/subsets_". El script generará un archivo *filter_final.json* para cada subconjunto y mergeará todos ellos al terminar, creando un archivo *final.json* con la misma estructura que los datasets y las predicciones. Se puede sacar este JSON fuera de la carpeta, a "_.../results/nombre-del-modelo_" para su fácil localización en el futuro.
 
-Para lanzar el script lo mejor es usar de nuevo _nohup_, pues tardará unas cuantas horas:
+Para lanzar el script lo mejor es usar de nuevo _nohup_, pues tardará unas cuantas horas (en torno a $15$ en nuestro caso):
 
 ```
 nohup python src/main/python/evaluation/generate.py > gen_log.txt &
 ```
-Si todo sale bien se obtendrá el _JSON_ listo para evaluar dentro de una carpeta _results_. El proceso deberá repetirse tantas veces como de modelos entrenados se disponga, modificando en cada caso la orden _--model-path_ en el comando del script. Se recomienda almacenar o renombrar los resultados para cada modelo. Para hacer inferencia con el modelo base de **LLaVA** y poder así comparar, mirar el siguiente subapartado.
+El proceso deberá repetirse tantas veces como de modelos entrenados se disponga, modificando en cada caso la orden _--model-path_ en el comando del script. Se recomienda almacenar o renombrar los resultados para cada modelo. Para hacer inferencia con el modelo base de **LLaVA** y poder así comparar, mirar el siguiente subapartado.
 
-**NOTA**: si el proceso tarda demasiado puede deberse a un problema de GPU, por lo que se recomienda no paralelizar y ocupar una única GPU lo más vacía posible. Si es necesario puede disminuirse el tamaño del conjunto de prueba mediante el script [filter_test.py](src/main/python/inference/filter_test.py), si el tiempo de carga o inferencia fuese demasiado grande.
+**NOTA**: si el proceso tarda demasiado puede deberse a un problema de GPU, por lo que se recomienda no paralelizar y ocupar una única GPU lo más vacía posible. Si es necesario puede disminuirse el tamaño del conjunto de prueba mediante el script [filter_test.py](src/main/python/inference/filter_test.py), si el tiempo de carga o inferencia fuese demasiado grande. También pueden lanzarse varias predicciones simultáneas para economizar el tiempo, en distintas **GPUs** desocupadas o por varios servidores.
 
 ```
 data
@@ -351,11 +353,19 @@ data
 │   └── data_test.json
 └── dataset.json
 results
-└── final.json
+├── nombre_modelo_1
+│   ├── subsets
+│   │   └── ...
+│   └── final.json
+├── nombre_modelo_2
+│   ├── subsets
+│   │   └── ...
+│   └── final.json
+└── ...
 ```
 
 ### Caso particular
-Para la generación de predicciones con el modelo base deberán hacerse unas ligeras modificaciones al script de inferencia [generate.py](src/main/python/inference/generate.py). Este modelo está construido de forma que ciertas palabras clave cambien, luego se deberán sustituir las palabras "Human" y "Assistant" por "USER" y "ASSISTANT" respectivamente para que se copian de forma correcta las predicciones.
+Para la generación de predicciones con el modelo base deberán hacerse unas ligeras modificaciones al script de inferencia [generate.py](src/main/python/inference/generate.py). Este modelo está construido de forma que ciertas palabras clave cambian, luego se deberán sustituir en el código las palabras "Human" y "Assistant" por "USER" y "ASSISTANT" respectivamente para que se copian de forma correcta las predicciones.
 
 De igual manera, se deberán modificar los parámetros del comando, poniendo en este caso como _--model-path_ el del modelo base y eliminando la orden _--model-base_:
 
@@ -366,18 +376,18 @@ command = [
 ]
 ```
 
+En general, es importante tener en cuenta que pueden aparecer problemas de predicción causados por ciertos parámetros. Por ejemplo un modelo entrenado con learning rate $5e-3$ puede que no logre procesar el dataset. Además, modelos mal entrenados, con pesos de LoRa mal mergeados o problemas de loss nula generados tras el mini-entrenamiento pueden provocar predicciones inválidas, monosilábicas, simbólicas o absurdas. En este último caso, comprobar el archivo *trainer_state.json* del modelo en cuestión para comprobar el estado de sus parámetros en los últimos steps.
+
 
 ## Evaluación
 
-Una vez ha terminado el fine-tuning y se dispone de las predicciones, es momento de pasar a la evaluación de resultados. Para la evaluación de los resultados usaremos una métrica de error específica para las tareas multimodales de **captioning** y **VQA**:
-
-    - [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
+Una vez ha terminado el fine-tuning y se dispone de las predicciones, es momento de pasar a la evaluación de resultados. Para la evaluación de los resultados usaremos una métrica de error específica para las tareas multimodales para visión y lenguaje, **captioning** y **VQA**: [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
 $$CIDEr_n(c_i,S_i)=\dfrac{1}{m}\sum_i\dfrac{g^n(c_i)\cdot g^n(s_{i,j})}{||g^n(c_i)||\cdot||g^n(s_{i,j})},$$
 $$g_k(s_{ij})=\dfrac{h_k(s_{ij})}{\sum_{w_j\in\Omega}h_l(s_{ij})}\log\left(\dfrac{|I|}{\sum_{I_p\in I}\min(1,\sum_qh_k(s_{pq}))}\right).$$
 
 
 ### Scripts de evaluación
-La carpeta _evaluation_ contiene una serie de scripts que permiten el cálculo correcto de la métrica **CIDEr**:
+La carpeta _evaluation_ en _src/main/python_ contiene una serie de scripts que permiten el cálculo correcto de la métrica **CIDEr**:
 
 ```
 root
@@ -394,6 +404,10 @@ root
 └── wandb
 ```
 
-Para la evaluación, simplemente se indicarán las rutas de los JSONs (conjunto de prueba y predicciones) en el script [evaluation.py](src/main/python/evaluation/evaluation.py), y se ejecutará. Como resultado se mostrará una colección de métricas de error individuales para cada predicción y un valor de la métrica **CIDEr** general calculada como la media de todas las anteriores.
+Para la evaluación, simplemente se indicarán las rutas de los JSONs (conjunto de prueba y predicciones) en el script [evaluation.py](src/main/python/evaluation/evaluation.py), y se ejecutará. Como resultado se mostrará una colección de métricas de error individuales para cada predicción y un valor de la métrica **CIDEr** general calculada como la media de todas las anteriores. El proceso creará una carpeta paralela llamada *pycache* que puede ser eliminada una vez obtenida la métrica.
+
+Se ha añadido al script de evaluación una funcionalidad para obtener la media de los errores no nulos de la métrica **CIDEr**. Esto se debe a que dichos errores no suelen considerarse válidos o realistas, y son causados por conjuntos de datos cuyos promps arrojan respuestas escuetas, booleanas o numéricas. Este es el caso de los datasets **LR** y **DOTA**, cuyas predicciones suelen ser $0.0$ independientemente de la calidad del modelo.
+
+La evaluación no crea ningún archivo, simplemente mostrará el valor de la métrica de error por terminal, y no tardará más de diez segundos, luego este último paso no supondrá ningún inconveniente de tiempo a diferencia del entrenamiento y la inferencia.
 
 
