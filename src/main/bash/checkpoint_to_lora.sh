@@ -74,7 +74,7 @@ for dir in "$root_path/res"/*; do
                     --gradient_accumulation_steps $gradient_accumulation_steps \
                     --evaluation_strategy "no" \
                     --save_strategy "steps" \
-                    --save_steps 300000 # Irrelevant \
+                    --save_steps 300000 \
                     --save_total_limit 1 \
                     --learning_rate $learning_rate \
                     --weight_decay 0. \
