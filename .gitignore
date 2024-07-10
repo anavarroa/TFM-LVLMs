@@ -8,6 +8,7 @@ gradio_web_server.log
 model_worker*
 DOTA
 LR
+lr*
 NWPU
 RSICD
 filter
