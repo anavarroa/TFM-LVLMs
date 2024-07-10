@@ -116,8 +116,8 @@ def descarga_JSON(directorio):
 
 if __name__=='__main__':
 
-    carpeta_imagenes = "/datassd/proyectos/tfm-alvaro/data/imagenes"
-    carpeta_json = "/datassd/proyectos/tfm-alvaro/data"
+    carpeta_imagenes = "RUTA_A_LA_CARPETA_DE_IMAGENES"  # Modificar
+    carpeta_json = "RUTA_A_LA_CARPETA_DEL_DATASET"  # Modificar
 
     descarga_LR(carpeta_imagenes)
     descarga_DOTA(carpeta_imagenes)

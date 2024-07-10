@@ -4,13 +4,11 @@ import os
 DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
 DEEPSPEED_JSON = "model/LLaVA/scripts/zero3.json"
 MODEL_NAME = "liuhaotian/llava-v1.5-7b"
-DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/dataset.json"
-TRAIN_DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/sets/data_train.json"
-TEST_DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/sets/data_test.json"
-#VAL_DATA_PATH = "/datassd/proyectos/tfm-alvaro/data/sets/data_val.json"
-IMAGE_FOLDER = "/datassd/proyectos/tfm-alvaro/data/imagenes"
+DATA_PATH = "RUTA_AL_DATASET_JSON"  # Modificar
+TRAIN_DATA_PATH = "RUTA_AL_CONJUNTO_DE_ENTRENAMIENTO"  # Modificar
+IMAGE_FOLDER = "RUTA_A_LA_CARPETA_DE_IMAGENES"  # Modificar
 VISION_TOWER = "openai/clip-vit-large-patch14-336"
-OUTPUT_DIR = "/datassd/proyectos/tfm-alvaro/res"
+OUTPUT_DIR = "RUTA_A_LA_CARPETA_OUTPUT"  # Modificar
 
 # PARÁMETROS:
 
@@ -57,10 +55,6 @@ finetune_script = f'''
     --report_to wandb
 '''
 
-# conjunto de validación requiero modificar train.py
-# report_to wandb para seguimiento en Weights & Biases
-# sin LORA falta memoria en GPU
-
 
 # Borrar cache de CUDA
 import torch
@@ -69,6 +63,3 @@ torch.cuda.empty_cache()
 # Ejecución del stream
 import subprocess
 print(finetune_script)
-
-#result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
-#print(result.stdout)

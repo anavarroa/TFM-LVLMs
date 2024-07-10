@@ -11,41 +11,41 @@ def interact_with_subprocess(command, input_lines):
         for input_data in input_lines:
             process.stdin.write(input_data + '\n')
             process.stdin.flush()
-            print(f"Sent to subprocess: {input_data}")  # Debugging line
+            print(f"Sent to subprocess: {input_data}")  # Debugging
         
-        # Read output from subprocess
+        # Leer el output del subprocess
         while True:
             line = process.stdout.readline()
             if not line:
                 break
             output_lines.append(line.strip())
-            print(line.strip())  # Print each line for debugging
+            print(line.strip())  # Imprimir las líneas para debugging
 
-        # Wait for subprocess to finish and get return code
+        # Esperar a que el subprocess termine y devolver código
         process.communicate()
         return output_lines, process.returncode
 
     finally:
-        # Ensure the subprocess is terminated
+        # Asegurarse de que el proceso ha terminado
         if process.poll() is None:
             process.kill()
 
 def update_json_with_predictions(input_json, predictions_file, output_json):
-    # Read predictions from final.txt
+    # Lectura predicciones de final.txt
     with open(predictions_file, 'r') as f:
         text = f.read()
 
-    # Split text by "Human: Assistant: "
+    # Escisión del texto por "Human: Assistant: "
     predictions = text.split('Human: Assistant: ')[1:]
 
-    # Remove unnecessary trailing parts (e.g., prompts for next image)
+    # Eliminación de cosas innecesarias
     predictions = [pred.split('\nHuman: Switching to a new image...')[0].strip() for pred in predictions]
 
-    # Load original test_data
+    # Carga del conjunto original
     with open(input_json, 'r') as f:
         test_data = json.load(f)
 
-    # Update test_data with predictions
+    # Actualización con imágenes
     pred_index = 0
     for entry in test_data:
         for conv in entry['conversations']:
@@ -57,27 +57,27 @@ def update_json_with_predictions(input_json, predictions_file, output_json):
                     print(f"Warning: Not enough predictions for {input_json}. Skipping further updates.")
                     break
 
-    # Save updated test_data to final.json
+    # Guardado del nuevo dataset a final.json
     with open(output_json, 'w') as f:
         json.dump(test_data, f, indent=4)
 
     print(f"{output_json} has been successfully created with updated predictions.")
 
 def merge_json_files(directory):
-    # Get a list of all JSON files in the directory and sort them
+    # Lista de todos los archivos JSON y clasificación
     json_files = sorted([filename for filename in os.listdir(directory) if filename.endswith('.json')])
 
-    # Initialize an empty list to store all entries
+    # Inicialización de una lista vacía
     all_entries = []
 
-    # Iterate over each sorted file in the directory
+    # Iteración sobre cada archivo clasificado
     for filename in json_files:
         filepath = os.path.join(directory, filename)
         with open(filepath, 'r', encoding='utf-8') as file:
             data = json.load(file)
             all_entries.extend(data)
 
-    # Write all_entries to results/final.json
+    # Escrito en results/final.json
     output_file = os.path.join(directory, 'final.json')
     with open(output_file, 'w', encoding='utf-8') as out:
         json.dump(all_entries, out, ensure_ascii=False, indent=4)
@@ -86,21 +86,19 @@ def merge_json_files(directory):
 
 def main():
     # Data paths
-    filter_folder = '/datassd/proyectos/tfm-alvaro/data/sets/filter/'
-    results_folder = '/datassd/proyectos/tfm-alvaro/results/'
+    filter_folder = 'RUTA_A_LA_CARPETA_DE_SUBDATASETS' # Modificar
+    results_folder = 'RUTA_A_LA_CARPETA_OUTPUT' # Modificar
 
-    # Ensure results folder exists, create if it doesn't
+    # Creación del archivo si no existe
     if not os.path.exists(results_folder):
         os.makedirs(results_folder)
 
-    # Collect all filter_i_final.txt files
+    # Procesamiento de los filter_i_final.txt y json
     input_txt_files = [file for file in os.listdir(filter_folder) if file.endswith('_final.txt')]
-    input_txt_files.sort()  # Ensure files are processed in order if necessary
-
-    # Collect corresponding filter_i.json files
+    input_txt_files.sort()
     input_json_files = [file.replace('_final.txt', '.json') for file in input_txt_files]
 
-    # Ensure pairs are aligned correctly
+    # Alineación correcta
     assert len(input_txt_files) == len(input_json_files), "Number of TXT and JSON files must match."
 
     for txt_file, json_file in zip(input_txt_files, input_json_files):
@@ -111,14 +109,14 @@ def main():
         final_txt = os.path.join(results_folder, f"{os.path.splitext(txt_file)[0]}.txt")
         final_json = os.path.join(results_folder, f"{os.path.splitext(json_file)[0]}.json")
 
-        # Now run generate.py using input_txt and input_json
+        # Comando para inferencia con cli
         command = [
-            "python", "/datassd/proyectos/tfm-alvaro/model/LLaVA/llava/serve/cli.py",
-            "--model-path", "/datassd/proyectos/tfm-alvaro/2_prueba_llava_lora_train_128_100_1e-4/",
+            "python", "RUTA_AL_CLI",
+            "--model-path", "RUTA_AL_MODELO_ENTRENADO",
             "--model-base", "liuhaotian/llava-v1.5-7b"
-        ]
+        ] # Modificar
 
-        # Read input lines from input_txt
+        # Lectura de las líneas
         with open(input_txt, 'r') as file:
             lines = file.readlines()
 
@@ -126,7 +124,7 @@ def main():
         
         print(f"Processing {input_txt} and {input_json}...")
 
-        # Interact with the subprocess
+        # Interacción con el subprocess
         output, returncode = interact_with_subprocess(command, input_lines)
 
         if returncode == 0:
@@ -134,16 +132,16 @@ def main():
         else:
             print("An error occurred while running the model.")
 
-        # Save predictions to final.txt
+        # Guardado en final.txt
         with open(final_txt, 'w') as final_file:
             final_file.write("\n".join(output))
 
         print(f"Predictions saved to {final_txt}")
 
-        # Update input_json with predictions and save to final.json
+        # Actualización de predicciones y guardado
         update_json_with_predictions(input_json, final_txt, final_json)
     
-    # Merge all JSON files into results/final.json
+    # Mergeo de todas las predicciones en un JSON
     merge_json_files(results_folder)
 
 if __name__ == "__main__":

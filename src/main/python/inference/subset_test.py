@@ -1,8 +1,8 @@
 import os
 import json
-SUBSET_SIZE = 100
+SUBSET_SIZE = 100 # Modificar
 
-# Function to create subsets of the original JSON file
+# Función para crear subsets de JSON original
 def create_json_subsets(input_json, output_dir, subset_size):
     with open(input_json, 'r') as infile:
         data = json.load(infile)
@@ -15,12 +15,12 @@ def create_json_subsets(input_json, output_dir, subset_size):
     for i in range(0, len(data), subset_size):
         subset = data[i:i+subset_size]
         subset_num = i // subset_size + 1
-        subset_filename = os.path.join(output_dir, f'filter_{subset_num:03}.json')  # Zero-pad the subset number to three digits
+        subset_filename = os.path.join(output_dir, f'filter_{subset_num:03}.json')  # Formateo de tres dígitos
         with open(subset_filename, 'w') as outfile:
             json.dump(subset, outfile, indent=4)
         print(f'Created {subset_filename}')
 
-# Function to convert JSON to intermediate txt format
+# Conversión de JSON a formato intermedio
 def convert_json_to_txt(input_json, output_txt, base_path):
     with open(input_json, 'r') as infile:
         data = json.load(infile)
@@ -35,7 +35,7 @@ def convert_json_to_txt(input_json, output_txt, base_path):
                     outfile.write(f"prompt: {prompt}\n")
             outfile.write("\n")
 
-# Function to process intermediate txt to final format
+# Procesamiento al formato final
 def process_intermediate_txt(intermediate_txt, final_txt):
     with open(intermediate_txt, 'r') as infile:
         with open(final_txt, 'w') as outfile:
@@ -48,35 +48,33 @@ def process_intermediate_txt(intermediate_txt, final_txt):
                     outfile.write(line.split("prompt:")[1].strip() + "\n")
                 elif line == "":
                     outfile.write("exit\n")
-            # Add an extra "exit" at the end if not already there
+            # Añadido del exit
             if lines[-1].strip() != "":
                 outfile.write("exit\n")
-            # Append "stop" at the end
+            # Añadido de stop
             outfile.write("stop\n")
     print(f"Processed {intermediate_txt} into {final_txt}")
 
-# Main function to execute the tasks
+# Ejecución de las tareas
 def main():
-    input_json = '/datassd/proyectos/tfm-alvaro/data/sets/data_test_no_lr.json'
-    base_path = '/datassd/proyectos/tfm-alvaro/data/imagenes'
-    output_dir = '/datassd/proyectos/tfm-alvaro/data/sets/filter_no_lr'
+    input_json = 'RUTA_AL_CONJUNTO_DE_PRUEBA' # Modificar
+    base_path = 'RUTA_A_LA_CARPETA_DE_IMAGENES' # Modificar
+    output_dir = 'RUTA_A_LA_CARPETA_OUTPUT' # Modificar
     
-    # Step 1: Create subsets of the JSON file
+    # Creación de subconjuntos
     create_json_subsets(input_json, output_dir, SUBSET_SIZE)
 
-    # Step 2 and Step 3: Convert each subset JSON into txt and then process to final format
+    # Conversión al formato final
     for subset_file in os.listdir(output_dir):
         if subset_file.endswith('.json'):
             intermediate_txt = os.path.join(output_dir, subset_file.replace('.json', '.txt'))
             final_txt = os.path.join(output_dir, subset_file.replace('.json', '_final.txt'))
             
-            # Convert JSON to intermediate txt format
             convert_json_to_txt(os.path.join(output_dir, subset_file), intermediate_txt, base_path)
-            
-            # Process the intermediate txt to generate final format
+
             process_intermediate_txt(intermediate_txt, final_txt)
             
-            # Delete the intermediate txt file
+            # Eliminación de archivos intermedios
             os.remove(intermediate_txt)
             print(f'Deleted {intermediate_txt}')
 

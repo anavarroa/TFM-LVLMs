@@ -38,7 +38,7 @@ def guardar_json(data, ruta_archivo):
 
 def crear_dataset_reducido(directorio, ratio):
     # Ruta del archivo JSON original
-    ruta_json = "/datassd/proyectos/tfm-alvaro/data/sets/data_test.json"
+    ruta_json = "RUTA_AL_CONJUNTO_DE_PRUEBA"  # Modificar
 
     # Cargar datos del JSON
     with open(ruta_json, "r") as f:
@@ -48,7 +48,7 @@ def crear_dataset_reducido(directorio, ratio):
     datos_seleccionados = particionar_datos_por_carpetas(data, ratio)
 
     # Guardar el conjunto reducido en un archivo JSON
-    ruta_archivo_reducido = "/datassd/proyectos/tfm-alvaro/data/sets/filtered_test.json"
+    ruta_archivo_reducido = "RUTA_AL_ARCHIVO_JSON_OUTPUT" # Modificar
     guardar_json(datos_seleccionados, ruta_archivo_reducido)
 
     # Mensaje de confirmación
@@ -58,5 +58,5 @@ if __name__=="__main__":
     directorio = os.path.join(os.path.dirname(os.path.abspath(__file__)))
 
     # Ratio para el conjunto reducido
-    ratio = 0.3 # 30%
+    ratio = 0.3   # Modificar
     crear_dataset_reducido(directorio, ratio)
