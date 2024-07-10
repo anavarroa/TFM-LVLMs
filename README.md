@@ -16,11 +16,16 @@
    - [Errores](#errores)
    - [Éxito](#éxito)
 5. [Inferencia](#inferencia)
+   - [Gradio](#gradio)
+   - [Cli](#cli)
+   - [Automatización](#automatización)
+   - [Caso particular](#caso-particular)
 6. [Evaluación](#evaluación)
+   - [Scripts de evaluación](#scripts-de-evaluación)
 
 ## Conjunto de datos
 
-El dataset de entrenamiento original se llama [**NWPU-RSICD-UAV-UCM-LR-DOTA-instructions**](https://huggingface.co/datasets/BigData-KSU/RS-instructions-dataset/blob/main/NWPU-RSICD-UAV-UCM-LR-DOTA-intrcutions.json), y consta de datos de varios datasets de _Remote Sensing_ (RS). El dataset deberá ser editado para que contenga datos de únicamente cuatro conjuntos principales: **NWPU**, **RSICD**, **LR** y **DOTA**. De ello se encargará el script [data_preparation](src/main/python/data_preparation.py) del que se habla abajo.
+El dataset de entrenamiento consta de datos de varios datasets de _Remote Sensing_ (RS): **NWPU**, **RSICD**, **LR** y **DOTA**. El script [data_preparation](src/main/python/data_preparation.py) del que se habla abajo se encargará de parte de la descarga y preparación del dataset.
 
 ### Descarga del dataset
 
@@ -55,22 +60,20 @@ Se recomienda ejecutar el script [data_preparation](src/main/python/data_prepara
 
 Será necesario hacer una partición del conjunto de datos elegido. Esta partición debe ser la misma durante todo el proceso de entrenamiento y posterior evaluación:
 - **Conjunto de entrenamiento** (*data_train*): datos que se usarán para entrenar al modelo, y que comprenderá la mayor parte del dataset.
-- **Conjunto de validación** (*data_val*): datos que se usarán, durante el entrenamiento, para evaluar el rendimiento y ajustar los hiperparámetros.
 - **Conjunto de prueba** (*data_test*): datos que se usarán para comprobar la calidad del modelo ya entrenado, durante la evaluación de resultados.
 
-El script [data_partition](src/main/python/data_partition.py) llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los tres conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
+El script [data_partition](src/main/python/data_partition.py) llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los dos conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
 
 ```
 data
 ├── imagenes
 ├── sets
 │   ├── data_train.json
-│   ├── data_val.json
 │   └── data_test.json
 └── dataset.json
 ```
 
-El porcentaje de datos en cada conjunto es por defecto 70% _TRAIN_, 10% _VAL_ y 20% _TEST_ (con semilla fijada). Si se desea pueden modificarse estos porcentajes desde el script, en la función *crear_datasets(directorio, train_ratio, test_ratio)*:
+El porcentaje de datos en cada conjunto es por defecto 70% _TRAIN_ y 30% _TEST_ (con semilla fijada). Si se desea una partición distinta o se va a considerar un conjunto de validación, pueden modificarse estos porcentajes desde el script, en la función *crear_datasets(directorio, train_ratio, test_ratio)*:
 - Si *train_ratio+test_ratio=1* se crearán el conjunto de entrenamiento y el de prueba
 - Si *train_ratio+test_ratio<1* se crearán, además de dichos conjuntos, el conjunto de validación con el porcentaje restante de datos.
 
@@ -111,11 +114,9 @@ VISION_TOWER = "openai/clip-vit-large-patch14-336"
 Deberemos también indicar la ruta a nuestro conjunto de datos personalizado, así como la carpeta donde deseamos que se alojen los resultados. Estas deberán ser especificadas manualmente:
 
 - **TRAIN_DATA_PATH**: ruta al conjunto de entrenamiento *data/sets/data_train.json*.
-- **VAL_DATA_PATH**: ruta al conjunto de validación *data/sets/data_val.json*.
+- **TEST_DATA_PATH**: ruta al conjunto de prueba *data/sets/data_test.json*.
 - **IMAGE_FOLDER**: ruta a la carpeta _data/imagenes_.
 - **OUTPUT_DIR**: ruta a la carpeta donde queremos guardar los resultados.
-
-NOTA: para poder usar el conjunto de validación durante el entrenamiento será necesario hacer unas cuantas modificaciones al script de entrenamiento _train.py_, pues está diseñado para considerar únicamente el conjunto de entrenamiento.
 
 ### Parámetros
 
@@ -250,10 +251,7 @@ Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el 
 nohup deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path .../data/dataset.json     --image_folder .../data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir .../res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb > log.txt &
 ```
 
-Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU (reducir *batch_size* en tal caso). En otra terminal puede estudiarse el uso de memoria del entrenamiento a tiempo de ejecución real (actualizado cada medio segundo) mediante:
-```
-watch -n 0.5 nvidia-smi
-```
+Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU (reducir *batch_size* en tal caso).
 
 Llegado el momento una barra de carga irá completándose hasta suplir el *num_train_epochs* indicadas, convergiendo al *learning_rate* e indicando la pérdida (*loss*). Esto puede tomar un tiempo largo, dependiendo del número de épocas. El proceso terminará con un historial y resumen de ejecución, guardado en el archivo _log.txt_, el cual conviene guardar en algún lugar. Al terminar el proceso se habrá creado una carpeta _wandb_ paralela a _data_, _model_ y _src_ con todos los datos del proceso, así como una serie de resultados en varios formatos dentro de la carpeta indicada por **OUTPUT_DIR**.
 
@@ -296,14 +294,18 @@ Además, será necesario que el checkpoint que queramos mergear contenga un arch
 python model/LLaVA/scripts/merge_lora_weights.py --model-path res/llava_lora_train_x_x_x/checkpoint-x --model-base liuhaotian/llava-v1.5-7b --save-model-path prueba/
 ```
 
-Una vez el modelo ha sido entrenado, y antes de generar predicciones, debemos hacerle unas cuantas cosas antes.
+Una vez el modelo ha sido entrenado, y antes de generar predicciones, debemos hacer unas cuantas cosas:
 1. En primer lugar deberemos entrenarlo desde los checkpoints una pequeña fracción de época más, para generar así el archivo _config.json_ que guarda la configuración del modelo. Para ello se usará el script ---.
 2. Con el archivo _config.json_ podemos proceder a mergear los pesos de **LoRA** con el script ---.
 
 
 ## Inferencia
 
-Ahora el modelo está listo para la inferencia. Para probarlo puede lanzarse en **Gradio** mediante los siguientes comandos:
+Ahora el modelo está listo para la inferencia, ya podemos generar predicciones para el conjunto de datos de prueba. Dependiendo del objetivo se pueden llevar a cabo varios métodos de inferencia.
+
+### Gradio
+
+Para hacer pequeñas pruebas con el modelo puede lanzarse en **Gradio** mediante los siguientes comandos:
 
 ```
 python -m llava.serve.controller --host 0.0.0.0 --port 10000
@@ -317,6 +319,8 @@ python -m llava.serve.gradio_web_server --controller http://localhost:10000 --mo
 CUDA_VISIBLE_DEVICES=0 python -m llava.serve.model_worker --host 0.0.0.0 --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-path [...] --model-base liuhaotian/llava-v1.5-7b
 ```
 
+### Cli
+
 Para probarlo desde la terminal puede lanzarse el _llava.serve.cli_:
 
 ```
@@ -328,6 +332,8 @@ Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, s
 - Posibilidad de analizar y predecir sobre varias imágenes con una única carga del modelo. Escribiendo "exit" en un prompt, se podrá introducir la ruta de una nueva imagen.
 - Modificaciones necesarias para poder ser lanzado como subprocess.
 - Interrupción de la ejecución al recibir la orden "stop".
+
+### Automatización
 
 El siguiente paso será preparar los conjuntos sobre los que el modelo realizará la inferencia. Por la naturaleza del subprocess, existe un delay entre prompt y prompt mucho más pronunciado que por terminal, y el tiempo de carga del modelo crece exponencialmente a más imágenes se pretenda analizar. Por ello, se realizará una partición del conjunto de prueba en subconjuntos de unas cuantas imágenes cada uno. Esto se consigue con el script [subset_test.py](src/main/python/inference/subset_test.py), en el que podemos indicar el tamaño de los subconjuntos (100 por defecto). Los subconjuntos se guardarán en una carpeta _filter_ dentro de _sets_. Una vez realizada la partición no debe modificarse para no alterar resultados entre modelos distintos.
 
@@ -404,10 +410,10 @@ root
 └── wandb
 ```
 
-Para la evaluación, simplemente se indicarán las rutas de los JSONs (conjunto de prueba y predicciones) en el script [evaluation.py](src/main/python/evaluation/evaluation.py), y se ejecutará. Como resultado se mostrará una colección de métricas de error individuales para cada predicción y un valor de la métrica **CIDEr** general calculada como la media de todas las anteriores. El proceso creará una carpeta paralela llamada *pycache* que puede ser eliminada una vez obtenida la métrica.
+Para la evaluación, simplemente se indicarán las rutas de los JSONs (conjunto de prueba y predicciones) en el script [evaluation.py](src/main/python/evaluation/evaluation.py), y se ejecutará. Como resultado se mostrará una colección de métricas de error individuales para cada predicción y una puntuación de la métrica **CIDEr** general calculada como la media de todas las anteriores. El proceso creará una carpeta paralela llamada *pycache* que puede ser eliminada una vez obtenida la métrica.
 
-Se ha añadido al script de evaluación una funcionalidad para obtener la media de los errores no nulos de la métrica **CIDEr**. Esto se debe a que dichos errores no suelen considerarse válidos o realistas, y son causados por conjuntos de datos cuyos promps arrojan respuestas escuetas, booleanas o numéricas. Este es el caso de los datasets **LR** y **DOTA**, cuyas predicciones suelen ser $0.0$ independientemente de la calidad del modelo.
+Se ha añadido al script de evaluación una funcionalidad para obtener la media de los valores no nulos de la métrica **CIDEr**. Esto se debe a que dichos valores no suelen considerarse válidos o realistas, y desestimarlos da una idea más fidedigna del desempeño del modelo. Estos valores nulos son causados por conjuntos de datos cuyos prompts arrojan respuestas escuetas, booleanas o numéricas. Este es el caso de los datasets **LR** y **DOTA**, cuyas predicciones suelen ser $0.0$ independientemente de la calidad del modelo.
 
-La evaluación no crea ningún archivo, simplemente mostrará el valor de la métrica de error por terminal, y no tardará más de diez segundos, luego este último paso no supondrá ningún inconveniente de tiempo a diferencia del entrenamiento y la inferencia.
+La evaluación no crea ningún archivo, simplemente mostrará el valor de la métrica por terminal, y no tardará más de diez segundos, luego este último paso no supondrá ningún inconveniente de tiempo a diferencia del entrenamiento y la inferencia.
 
 
