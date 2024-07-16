@@ -286,22 +286,16 @@ Los checkpoints del entrenamiento (marcados por el valor de *save_steps* que ind
 nohup python -u  .../src/main/python/copy_checkpoint.py > copy_check.txt &
 ```
 
-Es importante tener en cuenta que para el posterior correcto funcionamiento de los scripts habrá que renombrar las carpetas *train_x_x_x* creadas por el script por otro nombre que contenga las palabras *llava* y *lora* explícitamente (como *llava_lora_train_x_x_x*), pues de no ser así no podrán ser mergeados los checkpoints. Este proceso de mergeo podremos llevarlo a cabo con el script [merge_lora_weights.py](/datassd/proyectos/tfm-alvaro/tfm-modelos-multimodales/model/LLaVA/scripts/merge_lora_weights.py) que proporciona el propio modelo de LLaVA.
+Es importante tener en cuenta que para el posterior correcto funcionamiento de los scripts habrá que renombrar las carpetas *train_x_x_x* creadas por el script por otro nombre que contenga las palabras *llava* y *lora* explícitamente (como *llava_lora_train_x_x_x*), pues de no ser así no podrán ser mergeados los checkpoints. Este proceso de mergeo podremos llevarlo a cabo con el script [merge_lora_weights.py](./model/LLaVA/scripts/merge_lora_weights.py) que proporciona el propio modelo de LLaVA.
 
-Además, será necesario que el checkpoint que queramos mergear contenga un archivo **config.json**. Para ello, elegiremos una nueva carpeta _prueba_ donde guardar los resultados y escribiremos por terminal
+También hay que tener en cuenta que la aproximación llevada a cabo en el entrenamiento implica que el resultado no tiene la estructura de un modelo de Hugging Face, sino de checkpoint, por lo que es necesario proseguir con el entrenamiento para obtener un objeto modelo. Para realizar este proceso con todos los checkpoints almacenados de diferentes entrenamientos, se utiliza el script [checkpoint_to_lora.sh](src/main/bash/checkpoint_to_lora.sh), que esencialmente realiza un entrenamiento igual al descrito en [Entrenamiento](#entrenamiento) para todos los checkpoints almacenados pero con únicamente una fracción (configurable) de época. Los resultados (modelos LORA) se almacenan en la carpeta *lora_res*.
 
-```
-python model/LLaVA/scripts/merge_lora_weights.py --model-path res/llava_lora_train_x_x_x/checkpoint-x --model-base liuhaotian/llava-v1.5-7b --save-model-path prueba/
-```
-
-Una vez el modelo ha sido entrenado, y antes de generar predicciones, debemos hacer unas cuantas cosas:
-1. En primer lugar deberemos entrenarlo desde los checkpoints una pequeña fracción de época más, para generar así el archivo _config.json_ que guarda la configuración del modelo. Para ello se usará el script ---.
-2. Con el archivo _config.json_ podemos proceder a mergear los pesos de **LoRA** con el script ---.
+Una vez el modelo ha sido entrenado, y antes de generar predicciones, se puede proceder a realizar inferencia.
 
 
 ## Inferencia
 
-Ahora el modelo está listo para la inferencia, ya podemos generar predicciones para el conjunto de datos de prueba. Dependiendo del objetivo se pueden llevar a cabo varios métodos de inferencia.
+Ahora el modelo está listo para la inferencia, ya podemos generar predicciones para el conjunto de datos de prueba. Dependiendo del objetivo se pueden llevar a cabo varios métodos de inferencia, dependiendo de si se realiza con el modelo base (con estructura de modelo de Hugging Face) o con los modelos LoRA entrenados (que tienen que mergearse al modelo base).
 
 ### Gradio
 
