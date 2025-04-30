@@ -4,24 +4,56 @@
   <img src="imagen.jpeg" alt="LLaVA 1.5 para RS" width="25%">
 </div>
 
-1. [Conjunto de datos](#conjunto-de-datos)
+1. [Entorno](#entorno)
+2. [Conjunto de datos](#conjunto-de-datos)
    - [Descarga del dataset](#descarga-del-dataset)
    - [Partición](#partición)
-2. [Descarga del modelo](#descarga-del-modelo)
-3. [Carga del modelo preentrenado](#carga-del-modelo-preentrenado)
+3. [Descarga del modelo](#descarga-del-modelo)
+4. [Carga del modelo preentrenado](#carga-del-modelo-preentrenado)
    - [Rutas](#rutas)
    - [Parámetros](#parámetros)
    - [Parámetros Importantes](#parámetros-importantes)
-4. [Entrenamiento](#entrenamiento)
+5. [Entrenamiento](#entrenamiento)
    - [Errores](#errores)
    - [Éxito](#éxito)
-5. [Inferencia](#inferencia)
+6. [Inferencia](#inferencia)
    - [Gradio](#gradio)
    - [Cli](#cli)
    - [Automatización](#automatización)
    - [Caso particular](#caso-particular)
-6. [Evaluación](#evaluación)
+7. [Evaluación](#evaluación)
    - [Scripts de evaluación](#scripts-de-evaluación)
+
+
+## Entorno
+
+Lo primero de todo es montar el entorno con las librerías necesarias para la descarga y procesamiento de datos, entrenamiento, inferencia y evaluación. El primer lugar es la creación de un entorno en **Python 3.10.16**:
+
+```
+conda create -n [nombre] python==3.10.16
+```
+
+A continuación activamos dicho entorno:
+
+```
+conda activate [nombre]
+```
+
+E instalamos todas las librerías que usará el proyecto, evitando cualquier incompatibilidad que pudiera surgir. En principio la siguiente lista no debería ofrecer problemas:
+
+```
+pip install requests
+pip install gdown
+pip install torch torchvision torchaudio
+pip install deepspeed
+pip install transformers
+pip install 'transformers[torch]'
+pip install 'accelerate>=0.26.0'
+pip install flash-attn --no-build-isolation
+pip install peft
+pip install sentencepiece
+pip install protobuf
+```
 
 ## Conjunto de datos
 
@@ -62,7 +94,7 @@ Será necesario hacer una partición del conjunto de datos elegido. Esta partici
 - **Conjunto de entrenamiento** (*data_train*): datos que se usarán para entrenar al modelo, y que comprenderá la mayor parte del dataset.
 - **Conjunto de prueba** (*data_test*): datos que se usarán para comprobar la calidad del modelo ya entrenado, durante la evaluación de resultados.
 
-El script [data_partition](src/main/python/data_partition.py) llevará a cabo la partición mencionada del conjunto de datos, creando tres archivos JSON correspondientes a los dos conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
+El script [data_partition](src/main/python/data_partition.py) llevará a cabo la partición mencionada del conjunto de datos, creando dos archivos JSON correspondientes a los dos conjuntos a considerar, y los ubicará en una carpeta _sets_ dentro de _data_:
 
 ```
 data
@@ -88,13 +120,7 @@ El siguiente paso será descargar el modelo de [**LLaVA 1.5.**](https://github.c
 git clone https://github.com/haotian-liu/LLaVA.git
 ```
 
-una vez ejecutado, se creará una carpeta _LLaVA_ donde encontraremos todos los archivos del modelo. Para empezar a trabajar con el modelo deberemos estar situados dentro de esta carpeta
-
-```
-cd LLaVA
-```
-
-En esta carpeta ya podremos empezar a entrenar el modelo con nuestro conjunto de datos personalizado.
+una vez ejecutado, se creará una carpeta _LLaVA_ donde encontraremos todos los archivos del modelo. Con esta carpeta ya podremos empezar a entrenar el modelo con nuestro conjunto de datos personalizado.
 
 ## Carga del modelo preentrenado
 
@@ -102,7 +128,7 @@ Vamos a cargar el modelo de LLaVA 1.5. preentrenado para empezar con el fine-tun
 
 ### Rutas
 
-Para empezar el proceso de fine-tuning, tenemos en primer lugar que indicar las rutas pertinentes que el modelo necesitará conocer:
+Para empezar el proceso de fine-tuning, tenemos en primer lugar que ir al script [llava.py](src/main/python/llava.py) e indicar las rutas pertinentes que el modelo necesitará conocer:
 
 ```
 DEEPSPEED_SCRIPT = "deepspeed model/LLaVA/llava/train/train_mem.py"
@@ -114,9 +140,14 @@ VISION_TOWER = "openai/clip-vit-large-patch14-336"
 Deberemos también indicar la ruta a nuestro conjunto de datos personalizado, así como la carpeta donde deseamos que se alojen los resultados. Estas deberán ser especificadas manualmente:
 
 - **TRAIN_DATA_PATH**: ruta al conjunto de entrenamiento *data/sets/data_train.json*.
-- **TEST_DATA_PATH**: ruta al conjunto de prueba *data/sets/data_test.json*.
+- **DATA_PATH**: ruta al conjunto de prueba *data/sets/data_test.json*.
 - **IMAGE_FOLDER**: ruta a la carpeta _data/imagenes_.
 - **OUTPUT_DIR**: ruta a la carpeta donde queremos guardar los resultados.
+
+Es posible que estas rutas relativas por defecto haya que cambiarlas un poco, dependiendo de dónde nos encontremos situados al lanzar el entrenamiento. Además, si sale algún error relativo a módulos no encontrados (_ModuleNotFoundError_), es muy probable que haya que añadir la raíz del proyecto al PYTHONPATH:
+```
+export PYTHONPATH=[RUTA-ABSOLUTA.../TFM-LVLMs/model/LLaVA]
+```
 
 ### Parámetros
 
@@ -144,7 +175,6 @@ finetune_script = f'''
     --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 10 \
-    --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 300 \
     --save_total_limit 1 \
@@ -178,7 +208,6 @@ Vamos ahora con una breve explicación del resto de parámetros que aparecen en 
 - *num_train_epochs*: número de épocas de entrenamiento.
 - *per_device_train_batch_size*: cantidad de ejemplos de entrenamiento que se utilizan en una sola iteración del algoritmo.
 - *gradient_accumulation_steps*: acumulación de gradiente antes de actualizar los pesos.
-- *evaluation_strategy*: indica si se realizará evaluación durante el entrenamiento.
 - *learning_rate*: tasa de aprendizaje.
 - *weight_decay*: regularización.
 - *warmup_ratio*: programación de calentamiento.
@@ -211,8 +240,9 @@ Esto, no obstante, puede llegar a dar problemas por falta de memoria en GPU.
 
 El stream anterior utiliza **DeepSpeed**, una librería de optimización de Deep Learning que proporciona una amplia gama de funciones para acelerar el entrenamiento de modelos grandes en GPU y sistemas distribuidos.
 
+
 ## Entrenamiento
-Antes de nada, es recomendable borrar el cache de **CUDA** para asegurar un uso de memoria eficiente:
+Notar que, por defecto, el script [llava.py](src/main/python/llava.py) lo único que hace es imprimir por terminal el contenido del stream. Para entrenar deberá lanzarse dicho comando por terminal, tal cual está (o con nohup si quiere dejarse en segundo plano). Antes de nada, es recomendable borrar el cache de **CUDA** para asegurar un uso de memoria eficiente:
 
 ```
 import torch
@@ -220,7 +250,7 @@ import torch
 torch.cuda.empty_cache()
 ```
 
-A continuación, para ejecutar el stream podemos usar la librería _subprocess_:
+Si se quiere usar W&B para registrar métricas de entrenamiento, será necesario usar la librería _subprocess_ para lanzar el modelo en segundo plano y poder escribir por terminal (así lo requiere la librería), pues con nohup no podemos manejar este tipo de inputs durante el prceso:
 
 ```
 import subprocess
@@ -228,6 +258,7 @@ import subprocess
 result = subprocess.run([finetune_script], shell=True, capture_output=True, text=True)
 print(result.stdout)
 ```
+
 
 ### Errores
 Si da problemas, puede ser por varios motivos:
@@ -248,7 +279,7 @@ wandb: Enter your choice:
 Puede crearse una cuenta para poder llevar un seguimiento en directo de todo el proceso de entrenamiento desde la página [**Weights & Biases**](https://wandb.ai/site) (en tal caso se requerirá una ID que habrá que introducir por terminal). De lo contrario, puede elegirse no visualizar el resultado y proseguir con el entrenamiento. **Wandb** es una buena herramienta para realizar un estudio en detalle, pero si no se piensa usar puede eliminarse la última orden del stream, ```report_to wandb```. El cuadro de diálogo que crea _Wandb_ dará problemas si el programa es ejecutado en segundo plano. Sin embargo, una vez se haya lanzado una vez se registrará la ID de **W&B**, y podrá ejecutarse sin problemas con _nohup_:
 
 ```
-nohup deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path .../data/dataset.json     --image_folder .../data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir .../res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb > log.txt &
+nohup deepspeed model/LLaVA/llava/train/train_mem.py     --lora_enable True --lora_r 128 --lora_alpha 256 --mm_projector_lr 2e-5     --deepspeed model/LLaVA/scripts/zero3.json     --model_name_or_path liuhaotian/llava-v1.5-7b     --version v1     --data_path .../data/dataset.json     --image_folder .../data/imagenes     --vision_tower openai/clip-vit-large-patch14-336     --mm_projector_type mlp2x_gelu     --mm_vision_select_layer -2     --mm_use_im_start_end False     --mm_use_im_patch_token False     --image_aspect_ratio pad     --group_by_modality_length True     --bf16 True     --output_dir .../res     --num_train_epochs 0.05     --per_device_train_batch_size 16     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --save_strategy "steps"     --save_steps 50000     --save_total_limit 1     --learning_rate 2e-4     --weight_decay 0.     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb > log.txt &
 ```
 
 Obtener un error pasado este punto es muy posiblemente debido a una falta de memoria en GPU (reducir *batch_size* en tal caso).
@@ -297,21 +328,49 @@ Una vez el modelo ha sido entrenado, y antes de generar predicciones, se puede p
 
 Ahora el modelo está listo para la inferencia, ya podemos generar predicciones para el conjunto de datos de prueba. Dependiendo del objetivo se pueden llevar a cabo varios métodos de inferencia, dependiendo de si se realiza con el modelo base (con estructura de modelo de Hugging Face) o con los modelos LoRA entrenados (que tienen que mergearse al modelo base).
 
+Si se quiere probar un checkpoint entrenado (y se tiene acceso a Salas), puede probarse este: /datassd/proyectos/tfm-alvaro/lora_res/llava_lora_train_128_10_1e-5_checkpoint-1200.
+
+En todo caso, para que la inferencia funcione será necesario añadir la siguiente línea de comando tras la línea 150 del script [llava_llama.py](model/LLaVA/llava/model/language_model/llava_llama.py):
+```
+inputs.pop("cache_position")
+```
+
+
 ### Gradio
 
-Para hacer pequeñas pruebas con el modelo puede lanzarse en **Gradio** mediante los siguientes comandos:
+Para hacer pequeñas pruebas con el modelo puede lanzarse en **Gradio**.
 
+Deberán instalarse unos cuantos paquetes más en el entorno:
+
+```
+pip install fastapi
+pip install uvicorn
+pip install gradio
+```
+
+Y dejar corriendo los siguientes procesos en respectivas terminales (colocarse en model/LLaVA y activar el entorno en cada una):
+
+1. **Serve Controller**
 ```
 python -m llava.serve.controller --host 0.0.0.0 --port 10000
 ```
 
+2. **Web Server**
 ```
 python -m llava.serve.gradio_web_server --controller http://localhost:10000 --model-list-mode reload
 ```
 
+3. **Model Worker**
+- Modelo base:
 ```
-CUDA_VISIBLE_DEVICES=0 python -m llava.serve.model_worker --host 0.0.0.0 --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-path [...] --model-base liuhaotian/llava-v1.5-7b
+CUDA_VISIBLE_DEVICES=0 python -m llava.serve.model_worker --host 0.0.0.0 --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-path liuhaotian/llava-v1.5-7b
 ```
+- Modelo fine-tuneado:
+```
+CUDA_VISIBLE_DEVICES=0 python -m llava.serve.model_worker --host 0.0.0.0 --controller http://localhost:10000 --port 40000 --worker http://localhost:40000 --model-base liuhaotian/llava-v1.5-7b --model-path [...]
+```
+
+El resultado se encontrará en la dirección que de el Web Server (http://localhost:7860/). Si algo no funciona, hice una guía al respecto que estaré encantado de enviar a quien la necesite.
 
 ### Cli
 
@@ -321,7 +380,7 @@ Para probarlo desde la terminal puede lanzarse el _llava.serve.cli_:
 python -m llava.serve.cli --model-path [...] --model-base liuhaotian/llava-v1.5-7b --image-file [...]
 ```
 
-Esto funciona gracias al script __cli.py__ proporcionado por el propio modelo, sin embargo no permite la automatización de la generación de predicciones. Es por ello que para proseguir es necesario sustituir su código con el del [cli.py](cli.py) modificado que se encuentra en el repositorio. El funcionamiento del script ha sido cambiado para satisfacer las necesidades del proyecto, incorporando los siguientes cambios:
+Esto funciona gracias al script [cli.py](model/LLaVA/llava/serve/cli.py) proporcionado por el propio modelo, sin embargo no permite la automatización de la generación de predicciones. Es por ello que para proseguir es necesario sustituir su código con el del [cli.py](cli.py) modificado que se encuentra en el repositorio. El funcionamiento del script ha sido cambiado para satisfacer las necesidades del proyecto, incorporando los siguientes cambios:
 - Capacidad de introducir la imagen como input en lugar de como parámetro.
 - Posibilidad de analizar y predecir sobre varias imágenes con una única carga del modelo. Escribiendo "exit" en un prompt, se podrá introducir la ruta de una nueva imagen.
 - Modificaciones necesarias para poder ser lanzado como subprocess.
@@ -365,7 +424,7 @@ results
 ```
 
 ### Caso particular
-Para la generación de predicciones con el modelo base deberán hacerse unas ligeras modificaciones al script de inferencia [generate.py](src/main/python/inference/generate.py). Este modelo está construido de forma que ciertas palabras clave cambian, luego se deberán sustituir en el código las palabras "Human" y "Assistant" por "USER" y "ASSISTANT" respectivamente para que se copian de forma correcta las predicciones.
+Para la generación de predicciones con el modelo base deberán hacerse unas ligeras modificaciones al script de inferencia [generate.py](src/main/python/inference/generate.py). Este modelo está construido de forma que ciertas palabras clave cambian, luego se deberán sustituir en el código las palabras "Human" y "Assistant" por "USER" y "ASSISTANT" respectivamente para que se copien de forma correcta las predicciones.
 
 De igual manera, se deberán modificar los parámetros del comando, poniendo en este caso como _--model-path_ el del modelo base y eliminando la orden _--model-base_:
 
@@ -376,12 +435,12 @@ command = [
 ]
 ```
 
-En general, es importante tener en cuenta que pueden aparecer problemas de predicción causados por ciertos parámetros. Por ejemplo un modelo entrenado con learning rate $5e-3$ puede que no logre procesar el dataset. Además, modelos mal entrenados, con pesos de LoRa mal mergeados o problemas de loss nula generados tras el mini-entrenamiento pueden provocar predicciones inválidas, monosilábicas, simbólicas o absurdas. En este último caso, comprobar el archivo *trainer_state.json* del modelo en cuestión para comprobar el estado de sus parámetros en los últimos steps.
+En general, es importante tener en cuenta que pueden aparecer problemas de predicción causados por ciertos parámetros. Por ejemplo un modelo entrenado con learning rate $5e-3$ puede que no logre procesar el dataset. Además, modelos mal entrenados, con pesos de LoRa mal mergeados o problemas de loss nula generados tras el mini-entrenamiento pueden provocar predicciones inválidas, monosilábicas, simbólicas o absurdas. En este último caso, comprobar el archivo *trainer_state.json* del modelo en cuestión para verificar el estado de sus parámetros en los últimos steps.
 
 
 ## Evaluación
 
-Una vez ha terminado el fine-tuning y se dispone de las predicciones, es momento de pasar a la evaluación de resultados. Para la evaluación de los resultados usaremos una métrica de error específica para las tareas multimodales para visión y lenguaje, **captioning** y **VQA**: [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
+Una vez ha terminado el fine-tuning y se dispone de las predicciones, es momento de pasar a la evaluación de resultados. Para la evaluación de los resultados usaremos una métrica de error específica para las tareas multimodales de visión y lenguaje, **captioning** y **VQA**: [**CIDEr**](https://arxiv.org/pdf/1411.5726) (Consensus-based Image Description Evaluation):
 $$CIDEr_n(c_i,S_i)=\dfrac{1}{m}\sum_i\dfrac{g^n(c_i)\cdot g^n(s_{i,j})}{||g^n(c_i)||\cdot||g^n(s_{i,j})},$$
 $$g_k(s_{ij})=\dfrac{h_k(s_{ij})}{\sum_{w_j\in\Omega}h_l(s_{ij})}\log\left(\dfrac{|I|}{\sum_{I_p\in I}\min(1,\sum_qh_k(s_{pq}))}\right).$$
 
