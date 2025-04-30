@@ -45,7 +45,7 @@ pip install -r requirements.txt
 
 ```
 
-En principio la siguiente lista no debería ofrecer problemas:
+Alternativamente, pueden instalarse las librerías de la siguiente lista, que bastarán para el entrenamiento:
 
 ```
 pip install requests
@@ -346,7 +346,7 @@ inputs.pop("cache_position")
 
 Para hacer pequeñas pruebas con el modelo puede lanzarse en **Gradio**.
 
-Deberán instalarse unos cuantos paquetes más en el entorno:
+Si no se usó el _requirements.txt_ para montar el entorno, deberán instalarse unos cuantos paquetes más:
 
 ```
 pip install fastapi
