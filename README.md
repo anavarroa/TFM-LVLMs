@@ -39,7 +39,13 @@ A continuación activamos dicho entorno:
 conda activate [nombre]
 ```
 
-E instalamos todas las librerías que usará el proyecto, evitando cualquier incompatibilidad que pudiera surgir. En principio la siguiente lista no debería ofrecer problemas:
+E instalamos todas las librerías que usará el proyecto, evitando cualquier incompatibilidad que pudiera surgir. Puede hacerse directamente desde el [requirements.txt](requirements.txt):
+```
+pip install -r requirements.txt
+
+```
+
+En principio la siguiente lista no debería ofrecer problemas:
 
 ```
 pip install requests
